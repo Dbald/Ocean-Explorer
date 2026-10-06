@@ -187,3 +187,18 @@ test('Explore mode has no task gates and starts a guided lesson from a known sta
   await press(page, '2. Explore');
   await expect(dock(page)).toContainText('Observed 0 of 5');
 });
+
+test('the narration recorder lists every line and records a take', async ({ page }) => {
+  await page.goto('/?presentation=static#record');
+  const rec = page.locator('#recorder');
+  await expect(rec.getByRole('heading', { name: 'Record your narration' })).toBeVisible();
+  await expect(rec.locator('.rec-line')).toHaveCount(14);
+  await rec.getByRole('button', { name: 'Record' }).first().click();
+  await expect(rec.getByText('Recording…')).toBeVisible();
+  await page.waitForTimeout(600);
+  await rec.getByRole('button', { name: 'Stop' }).click();
+  await expect(rec.getByRole('link', { name: 'Save file' })).toHaveAttribute('download', /^step-briefing\./);
+  await expect(rec.locator('.rec-progress')).toContainText('1 of 14');
+  await page.keyboard.press('Escape');
+  await expect(rec).toBeHidden();
+});

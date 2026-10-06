@@ -7,6 +7,7 @@ import { foodRelationshipById } from './content/food.ts';
 import { habitatById } from './content/habitats.ts';
 import { COMPOSITE_NOTICE, GUIDING_QUESTION, LESSON_TITLE, OBJECTIVE, PRODUCT_NAME, connectItems, exitQuestions, stepById, steps, videoSegments } from './content/lesson.ts';
 import { narrationById } from './content/narration.ts';
+import { recordedAudioFor } from './content/recordings.ts';
 import { organismById, organisms } from './content/organisms.ts';
 import type { HabitatId, StepId, VideoSegment } from './content/types.ts';
 import { initialState, reduce, type Action, type LessonState, type Mode } from './lesson/controller.ts';
@@ -61,7 +62,7 @@ export class App {
         this.narrationState = s;
         this.renderCaptions();
       },
-    });
+    }, recordedAudioFor);
   }
 
   init() {
@@ -74,6 +75,22 @@ export class App {
     void this.detectVideos();
     $('guide').innerHTML = this.guideMarkup();
     if (location.hash === '#guide') this.openGuide();
+    if (location.hash === '#record') void this.openRecorder();
+  }
+
+  private recorder: { open(): void; close(): void; isOpen: boolean } | null = null;
+
+  /** The recording page loads on demand, so it adds nothing to the lesson's own load. */
+  private async openRecorder() {
+    this.narrator.skip();
+    if (!this.recorder) {
+      const { Recorder } = await import('./ui/recorder.ts');
+      this.recorder = new Recorder($('recorder'), () => {
+        if (location.hash === '#record') history.replaceState(null, '', location.pathname + location.search);
+      });
+    }
+    $('guide').hidden = true;
+    this.recorder.open();
   }
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -453,7 +470,7 @@ export class App {
   private pendingConfirm: (() => void) | null = null;
 
   private guideMarkup() {
-    return `<div class="guide-toolbar">${btn('Print guide', 'print-guide', { cls: 'secondary', icon: '⎙' })}${btn('Close guide', 'close-guide', { cls: 'primary', icon: '✕' })}</div>${renderGuide(this.videos.map((v) => v.id))}`;
+    return `<div class="guide-toolbar"><a class="btn secondary" href="#record"><span class="btn-icon" aria-hidden="true">●</span><span>Record narration</span></a>${btn('Print guide', 'print-guide', { cls: 'secondary', icon: '⎙' })}${btn('Close guide', 'close-guide', { cls: 'primary', icon: '✕' })}</div>${renderGuide(this.videos.map((v) => v.id))}`;
   }
 
   private openGuide() {
@@ -462,12 +479,15 @@ export class App {
     g.innerHTML = this.guideMarkup();
     g.hidden = false;
     document.body.classList.add('guide-open');
+    // The lesson behind an open overlay can't be reached by keyboard or screen reader.
+    $('app').inert = true;
     g.querySelector<HTMLElement>('[data-action="close-guide"]')?.focus();
   }
 
   private closeGuide() {
     $('guide').hidden = true;
     document.body.classList.remove('guide-open');
+    $('app').inert = false;
     if (location.hash === '#guide') history.replaceState(null, '', location.pathname + location.search);
     this.returnFocus?.focus();
   }
@@ -552,11 +572,15 @@ export class App {
         if (id !== 'confirm') this.returnFocus?.focus();
       });
     }
-    window.addEventListener('hashchange', () => (location.hash === '#guide' ? this.openGuide() : null));
+    window.addEventListener('hashchange', () => {
+      if (location.hash === '#guide') this.openGuide();
+      if (location.hash === '#record') void this.openRecorder();
+    });
   }
 
   private onKey(e: KeyboardEvent) {
     if (e.key === 'Escape') {
+      if (this.recorder?.isOpen) return this.recorder.close();
       if (!$('guide').hidden) return this.closeGuide();
       if (!$('video-panel').hidden) return this.closeVideo();
       if (this.state.selectedOrganism) {
@@ -567,7 +591,7 @@ export class App {
     }
     const target = e.target as HTMLElement;
     const typing = target.closest('input, textarea, select, [contenteditable]');
-    const modalOpen = document.querySelector('dialog[open]') || !$('guide').hidden;
+    const modalOpen = document.querySelector('dialog[open]') || !$('guide').hidden || !$('recorder').hidden;
     if (typing || modalOpen || e.ctrlKey || e.metaKey || e.altKey) return;
     if (this.state.mode !== 'lesson') return;
     const key = e.key.toLowerCase();

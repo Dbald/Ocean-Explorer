@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { content } from '../../src/content/index.ts';
 import { exitQuestions, steps } from '../../src/content/lesson.ts';
+import { existsSync } from 'node:fs';
 import { narrationById } from '../../src/content/narration.ts';
+import { narrationAudioSrc, recordedNarration } from '../../src/content/recordings.ts';
 import { cardWordCount, organisms } from '../../src/content/organisms.ts';
 import { CARD_WORD_LIMIT, validateContent, type ContentBundle } from '../../src/content/validate.ts';
 
@@ -45,6 +47,15 @@ describe('content structure', () => {
     const eaten = new Set(content.foodRelationships.map((r) => r.food));
     const eaters = new Set(content.foodRelationships.map((r) => r.consumer));
     expect([...eaten].filter((x) => eaters.has(x))).toEqual([]);
+  });
+});
+
+describe('recorded narration', () => {
+  it('lists only real narration segments, each with its audio file present', () => {
+    for (const id of recordedNarration) {
+      expect(narrationById.has(id), id).toBe(true);
+      expect(existsSync(`public/${narrationAudioSrc(id)}`), id).toBe(true);
+    }
   });
 });
 

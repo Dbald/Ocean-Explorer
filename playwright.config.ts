@@ -17,8 +17,9 @@ export default defineConfig({
       name: 'classroom-board',
       use: {
         ...devices['Desktop Chrome'],
+        permissions: ['microphone'],
         viewport: { width: 1920, height: 1080 },
-        launchOptions: { executablePath, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
+        launchOptions: { executablePath, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
       },
     },
   ],

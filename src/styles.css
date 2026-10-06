@@ -350,6 +350,23 @@ details[open] > summary::before { transform: rotate(90deg); }
 .guide .transcript h4 { color: #0b5f7a; }
 .guide kbd { background: #fff; border-color: #8fb9c4; }
 
+/* ── Narration recorder (#record) ───────────────────────────────────── */
+.guide-toolbar a.btn.secondary { background: #fff; color: #0d2630; border-color: #8fb9c4; text-decoration: none; }
+.rec-toolbar { align-items: center; }
+.rec-progress { margin: 0 auto 0 0; font-weight: 700; }
+.rec-meter { width: 9em; height: 12px; border-radius: 999px; background: #c9dde2; overflow: hidden; }
+.rec-meter span { display: block; height: 100%; width: 0; background: #1f8a57; transition: width 0.06s linear; }
+.recorder section { margin-top: 1em; }
+.rec-line { border: 2px solid #b8d6dd; border-radius: 12px; padding: 0.6em 0.8em; margin: 0.6em 0; background: #fff; }
+.rec-line.is-recording { border-color: #c0392b; box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.2); }
+.rec-text { font-size: 1.35em; line-height: 1.45; margin: 0.2em 0 0.5em; max-width: 46em; }
+.rec-line audio { height: 44px; }
+.rec-live { color: #c0392b; font-weight: 800; }
+.mono { font-family: ui-monospace, Menlo, Consolas, monospace; text-transform: none; letter-spacing: 0; }
+.recorder .btn.secondary, .recorder a.btn { background: #fff; color: #0d2630; border-color: #8fb9c4; text-decoration: none; font-weight: 700; }
+.recorder .btn.secondary:hover, .recorder a.btn:hover { background: #e3f1f4; }
+.recorder .btn.primary.danger { background: #c0392b; border-color: #c0392b; color: #fff; }
+
 /* ── Narrow / portrait screens: lesson panel moves to the bottom ────────── */
 @media (max-width: 900px), (max-aspect-ratio: 1/1) {
   .dock {
@@ -382,7 +399,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 /* Print: the full teacher guide, whatever is on screen. */
 @media print {
   body { overflow: visible; background: #fff; }
-  .app, dialog, .skip-link, .guide-toolbar { display: none !important; }
+  .app, dialog, .skip-link, .guide-toolbar, #recorder { display: none !important; }
   .guide-overlay { display: block !important; position: static; overflow: visible; background: #fff; }
   .guide { max-width: none; font-size: 11pt; padding: 0; }
   .guide section { break-inside: auto; }

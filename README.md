@@ -24,6 +24,7 @@ Useful URLs:
 |---|---|
 | `/` | Entry screen (Start lesson / Explore) |
 | `/#guide` | The teacher guide, ready to print |
+| `/#record` | Record the narration in your own voice |
 | `/?presentation=static` | Illustrations instead of 3D (also available in Settings) |
 
 ## Checks
@@ -104,6 +105,10 @@ scripts/          Content validation / release gate
 | Rendering | 60 FPS reference, ≥ 30 FPS classroom | **Settings → Show performance** shows live FPS |
 | Control feedback | ≈ 200 ms | Local UI updates synchronously |
 
+## Your own voice
+
+The narration can use recordings of your own voice in place of the browser voice: 14 short lines, about 3½ minutes in total. Open `/#record` (or **Teacher guide → Record narration**) to record them line by line in the browser. See [docs/narration.md](docs/narration.md) for the full script and how recordings are added.
+
 ## Optional video segments
 
 Three short segments from Devin are supported: an opening invitation, a prompt before the shelter investigation and a closing reflection. To add one, place the file and its captions in `public/media/`:
@@ -121,6 +126,7 @@ The app checks for each file at startup and offers a **Message from Devin** butt
 - [docs/content-review.md](docs/content-review.md): source register, review checklist and how to record a review
 - [docs/platform-decision.md](docs/platform-decision.md): Atlas reuse assessment and the platform decision
 - [docs/pilot-checklist.md](docs/pilot-checklist.md): technical rehearsal log and pilot plan
+- [docs/narration.md](docs/narration.md): narration script and how to add your recordings
 
 ## Privacy
 

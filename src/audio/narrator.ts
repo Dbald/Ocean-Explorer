@@ -1,7 +1,8 @@
 /**
- * Narration: speaks lesson text with the browser's speech engine when one is
- * available. Captions always carry the same text, so no essential content
- * depends on audio. Audio only ever starts after an intentional user action.
+ * Narration: plays a recorded voice clip when one exists for the segment,
+ * otherwise speaks the text with the browser's speech engine when available.
+ * Captions always carry the same text, so no essential content depends on
+ * audio. Audio only ever starts after an intentional user action.
  */
 export type NarrationState = 'idle' | 'playing' | 'paused';
 
@@ -21,14 +22,17 @@ export class Narrator {
   private token = 0;
 
   private events: NarratorEvents;
+  private audioFor: (id: string) => string | null;
+  private audio: HTMLAudioElement | null = null;
 
-  constructor(events: NarratorEvents) {
+  constructor(events: NarratorEvents, audioFor: (id: string) => string | null = () => null) {
     this.events = events;
+    this.audioFor = audioFor;
   }
 
-  /** True when the browser can speak; captions work either way. */
+  /** True when there is a voice to mute (browser speech or a recording); captions work either way. */
   get voiceAvailable() {
-    return !!this.synth;
+    return !!this.synth || !!this.audio;
   }
 
   get playing() {
@@ -49,7 +53,9 @@ export class Narrator {
     this.sentences = text.match(/[^.!?]+[.!?]+["”’]?|[^.!?]+$/g)?.map((s) => s.trim()) ?? [text];
     this.sentenceIndex = 0;
     this.setState('playing');
-    this.speakNext();
+    const src = this.audioFor(id);
+    if (src) this.playRecording(src);
+    else this.speakNext();
   }
 
   replay() {
@@ -58,6 +64,11 @@ export class Narrator {
 
   pause() {
     if (this.state !== 'playing') return;
+    if (this.audio) {
+      this.audio.pause();
+      this.setState('paused');
+      return;
+    }
     this.token++;
     this.synth?.cancel();
     this.setState('paused');
@@ -66,7 +77,8 @@ export class Narrator {
   resume() {
     if (this.state !== 'paused') return;
     this.setState('playing');
-    this.speakNext();
+    if (this.audio) void this.audio.play().catch(() => this.fallBackToSpeech());
+    else this.speakNext();
   }
 
   /** Skip the current segment. */
@@ -79,10 +91,16 @@ export class Narrator {
 
   setVolume(v: number) {
     this.volume = v;
+    if (this.audio) this.audio.volume = v;
   }
 
   setMuted(m: boolean) {
     this.muted = m;
+    // A muted recording keeps playing silently, so captions stay in time with it.
+    if (this.audio) {
+      this.audio.muted = m;
+      return;
+    }
     if (m && this.state === 'playing') {
       // Keep captions flowing at reading pace while muted.
       this.token++;
@@ -94,6 +112,63 @@ export class Narrator {
   private stopSpeech() {
     this.token++;
     this.synth?.cancel();
+    if (this.audio) {
+      this.audio.pause();
+      this.audio = null;
+    }
+  }
+
+  /**
+   * Plays a recorded clip. Captions advance sentence by sentence, timed in
+   * proportion to each sentence's length across the clip's duration.
+   */
+  private playRecording(src: string) {
+    const token = this.token;
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+    audio.volume = this.volume;
+    audio.muted = this.muted;
+    this.audio = audio;
+    const lengths = this.sentences.map((s) => s.length);
+    const total = lengths.reduce((a, b) => a + b, 0) || 1;
+    const ends: number[] = [];
+    lengths.reduce((acc, len) => {
+      ends.push((acc + len) / total);
+      return acc + len;
+    }, 0);
+    let shown = 0;
+    this.events.onCaption(this.sentences[0] ?? null);
+    audio.addEventListener('timeupdate', () => {
+      if (token !== this.token || !audio.duration) return;
+      const f = audio.currentTime / audio.duration;
+      const i = Math.min(ends.findIndex((e) => f < e), this.sentences.length - 1);
+      const index = i === -1 ? this.sentences.length - 1 : i;
+      if (index !== shown) {
+        shown = index;
+        this.sentenceIndex = index;
+        this.events.onCaption(this.sentences[index]);
+      }
+    });
+    audio.addEventListener('ended', () => {
+      if (token !== this.token) return;
+      this.audio = null;
+      this.setState('idle');
+    });
+    audio.addEventListener('error', () => {
+      if (token === this.token) this.fallBackToSpeech();
+    });
+    void audio.play().catch(() => {
+      if (token === this.token) this.fallBackToSpeech();
+    });
+  }
+
+  /** A missing or unplayable recording never silences the lesson. */
+  private fallBackToSpeech() {
+    if (this.audio) {
+      this.audio.pause();
+      this.audio = null;
+    }
+    if (this.state === 'playing') this.speakNext();
   }
 
   private setState(s: NarrationState) {
