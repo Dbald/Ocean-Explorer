@@ -2,7 +2,7 @@
   "name": "ocean-explorer",
   "private": true,
   "version": "0.1.0",
-  "description": "Ocean Explorer \u2014 Belize: The Living Reef. A teacher-led browser reef expedition for classroom displays.",
+  "description": "Ocean Explorer — Belize: The Living Reef. A teacher-led browser reef expedition for classroom displays.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -21,7 +21,9 @@
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.4",
     "@types/three": "^0.186.0",
+    "@vitejs/plugin-legacy": "^8.2.3",
     "jsdom": "^29.1.1",
+    "terser": "^5.51.2",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vitest": "^5.0.3"

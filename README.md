@@ -56,6 +56,10 @@ To run the end-to-end tests against a Chromium that is already installed, set `C
 | OE-11 Session controls | Non-identifying progress and settings in local storage; **Clear session**; refresh behaviour below |
 | OE-12 Alternative presentation | Static illustrations with the same cards, questions and explanations (`src/scene/StaticScene.ts`) |
 
+### Browser support
+
+Classroom boards often run an older built-in browser. The build produces two bundles: a modern one, and a legacy one (with polyfills) for browsers older than Chrome 105, down to Chrome 64 / Safari 12. Each browser loads the right one automatically. The 3D reef needs WebGL 2; without it the lesson switches to the illustrations. If the app ever fails to start, the page shows a message with the browser version after 15 seconds, so nobody is left looking at a blank screen. A Playwright test runs the lesson through the legacy bundle.
+
 ### Refresh behaviour
 
 Lesson progress (step, stop, answers, class prediction, optional class idea) and display settings are saved in the browser's local storage on this computer only. After a refresh, the entry screen offers **Resume lesson (step N)** alongside **Start lesson**; audio restarts only after a click. The open organism card is not restored. **Restart lesson** clears answers; **Settings → Clear session** removes everything stored. If storage is blocked (for example a private window), the lesson still works but won't survive a refresh. This is covered by `tests/e2e/lesson.spec.ts`.

@@ -43,7 +43,8 @@ const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() 
 export function webglAvailable(): boolean {
   try {
     const c = document.createElement('canvas');
-    return !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+    // three.js needs WebGL 2; older boards with only WebGL 1 get the illustrations instead.
+    return !!(window.WebGL2RenderingContext && c.getContext('webgl2'));
   } catch {
     return false;
   }

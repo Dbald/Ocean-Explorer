@@ -97,15 +97,15 @@ kbd { font-family: inherit; background: var(--panel-3); border: 1px solid var(--
 .small-btn { min-height: 56px; min-width: 56px; font-size: 0.72em; padding: 0.2em 0.7em; }
 
 /* ── Stage ──────────────────────────────────────────────────────────────── */
-.app { position: fixed; inset: 0; }
-.stage { position: absolute; inset: 0; background: linear-gradient(#8fdde8, #2c9db2 55%, #17677c); }
+.app { position: fixed; top: 0; right: 0; bottom: 0; left: 0; }
+.stage { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: linear-gradient(#8fdde8, #2c9db2 55%, #17677c); }
 .stage canvas { display: block; width: 100%; height: 100%; touch-action: manipulation; }
 .static-scene {
   position: absolute; top: calc(56px + 1em); left: 0; right: var(--inset-right); bottom: var(--inset-bottom);
   overflow: hidden; display: grid; place-items: center; container-type: size;
 }
 /* The whole illustration always fits, so nothing important is ever cropped. */
-.static-frame { position: relative; aspect-ratio: 16 / 9; width: min(100cqw, 100cqh * 16 / 9); overflow: hidden; border-radius: 8px; }
+.static-frame { position: relative; aspect-ratio: 16 / 9; width: 100%; max-height: 100%; width: min(100cqw, 100cqh * 16 / 9); overflow: hidden; border-radius: 8px; }
 .static-frame svg { width: 100%; height: 100%; display: block; border-radius: 8px; }
 .hotspot {
   position: absolute;
@@ -144,7 +144,7 @@ kbd { font-family: inherit; background: var(--panel-3); border: 1px solid var(--
 .step-indicator { font-size: 0.75em; font-weight: 700; color: var(--accent); margin-right: 0.3em; }
 
 /* ── Entry ──────────────────────────────────────────────────────────────── */
-.entry { position: absolute; inset: 0; display: grid; place-items: center; padding: 5em 1rem 1rem; z-index: 10; }
+.entry { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; padding: 5em 1rem 1rem; z-index: 10; }
 .entry-box {
   max-width: 34em;
   background: rgba(8, 42, 55, 0.94);
@@ -157,7 +157,7 @@ kbd { font-family: inherit; background: var(--panel-3); border: 1px solid var(--
 .entry-actions { margin: 0.9em 0; }
 
 /* ── Loading ────────────────────────────────────────────────────────────── */
-.loading { position: absolute; inset: 0; display: grid; place-items: center; z-index: 30; background: rgba(6, 40, 52, 0.85); }
+.loading { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; z-index: 30; background: rgba(6, 40, 52, 0.85); }
 .loading-box { background: var(--panel); padding: 1em 1.4em; border-radius: var(--radius); min-width: min(90vw, 16em); }
 .bar { height: 14px; background: var(--panel-3); border-radius: 999px; overflow: hidden; margin-top: 0.4em; }
 .bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
@@ -327,7 +327,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 .transcript h4 { margin-top: 0.8em; color: var(--accent); }
 
 /* ── Teacher guide ──────────────────────────────────────────────────────── */
-.guide-overlay { position: fixed; inset: 0; z-index: 50; overflow-y: auto; background: #f7fbfc; color: #0d2630; }
+.guide-overlay { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 50; overflow-y: auto; background: #f7fbfc; color: #0d2630; }
 .guide-toolbar { position: sticky; top: 0; display: flex; justify-content: flex-end; gap: 0.5em; padding: 0.5em 1em; background: #e3f1f4; border-bottom: 2px solid #b8d6dd; color-scheme: light; }
 .guide-toolbar .btn.secondary { background: #fff; color: #0d2630; border-color: #8fb9c4; }
 .guide { max-width: 60em; margin: 0 auto; padding: 1em 1.2em 3em; font-size: calc(0.75 * var(--fs)); }
@@ -366,6 +366,12 @@ details[open] > summary::before { transform: rotate(90deg); }
 .recorder .btn.secondary, .recorder a.btn { background: #fff; color: #0d2630; border-color: #8fb9c4; text-decoration: none; font-weight: 700; }
 .recorder .btn.secondary:hover, .recorder a.btn:hover { background: #e3f1f4; }
 .recorder .btn.primary.danger { background: #c0392b; border-color: #c0392b; color: #fff; }
+
+/* ── Start-up failure message (shown by the watchdog in index.html) ── */
+.boot-error { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(4, 32, 43, 0.92); }
+.boot-error-box { max-width: 40em; background: #082a37; color: #f4fbfd; border: 3px solid #ffd166; border-radius: 18px; padding: 1.2em 1.4em; font-size: 22px; }
+.boot-error-box h1 { font-size: 1.4em; }
+.boot-error-detail { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.7em; color: #c6dde4; word-break: break-word; }
 
 /* ── Narrow / portrait screens: lesson panel moves to the bottom ────────── */
 @media (max-width: 900px), (max-aspect-ratio: 1/1) {

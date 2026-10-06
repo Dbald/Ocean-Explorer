@@ -74,6 +74,9 @@ export class App {
     this.startPresentation();
     void this.detectVideos();
     $('guide').innerHTML = this.guideMarkup();
+    // Tells the start-up watchdog in index.html that the app is running.
+    document.documentElement.setAttribute('data-booted', '1');
+    $('boot-error').hidden = true;
     if (location.hash === '#guide') this.openGuide();
     if (location.hash === '#record') void this.openRecorder();
   }

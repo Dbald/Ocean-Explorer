@@ -49,7 +49,36 @@
     <div id="guide" class="guide-overlay" role="dialog" aria-modal="true" aria-label="Teacher guide" hidden></div>
     <div id="recorder" class="guide-overlay" role="dialog" aria-modal="true" aria-label="Record narration" hidden></div>
 
+    <section id="boot-error" class="boot-error" role="alert" hidden>
+      <div class="boot-error-box">
+        <h1>Ocean Explorer couldn’t start in this browser</h1>
+        <p>Try opening the same link in an up-to-date Chrome or Edge, or on a laptop connected to the board.</p>
+        <p class="boot-error-detail" id="boot-error-detail"></p>
+        <p class="boot-error-detail" id="boot-error-ua"></p>
+      </div>
+    </section>
     <noscript>Ocean Explorer needs JavaScript. Ask your teacher for the printable guide.</noscript>
+    <script>
+      // Plain, old-browser-safe script: if the app hasn't started within 15 s, show a
+      // message with the last script error and the browser version instead of a blank screen.
+      (function () {
+        var lastError = '';
+        window.addEventListener('error', function (e) {
+          var msg = String(e.message || '');
+          // Expected on older browsers: the modern bundle refuses to run and the legacy one takes over.
+          if (msg.indexOf('import.meta') !== -1) return;
+          lastError = 'Error: ' + msg + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '');
+        });
+        setTimeout(function () {
+          if (document.documentElement.getAttribute('data-booted')) return;
+          var box = document.getElementById('boot-error');
+          if (!box) return;
+          box.hidden = false;
+          document.getElementById('boot-error-detail').textContent = lastError || 'The app did not finish starting.';
+          document.getElementById('boot-error-ua').textContent = 'Browser: ' + navigator.userAgent;
+        }, 15000);
+      })();
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

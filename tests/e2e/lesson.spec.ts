@@ -205,3 +205,21 @@ test('the narration recorder lists every line and records a take', async ({ page
   await page.keyboard.press('Escape');
   await expect(rec).toBeHidden();
 });
+
+test('older classroom-board browsers run the legacy build', async ({ page }) => {
+  // Simulate a browser without import.meta.resolve (Chrome < 105): the modern bundle refuses
+  // to run, and the legacy bundle must start the app exactly once.
+  await page.route(/\/(\?.*)?$|\/assets\/(index|polyfills)-(?!legacy)[^/]*\.js$/, async (route) => {
+    const res = await route.fetch();
+    const body = (await res.text()).replaceAll('import.meta.resolve', 'import.meta.missingInOldBrowsers');
+    await route.fulfill({ response: res, body });
+  });
+  const legacy = page.waitForResponse(/index-legacy-[^/]*\.js$/);
+  await page.goto('/?presentation=static');
+  await legacy;
+  await expect(page.locator('html')).toHaveAttribute('data-booted', '1');
+  await expect(page.locator('#boot-error')).toBeHidden();
+  await press(page, 'Start lesson');
+  await expect(page.locator('#dock')).toHaveCount(1);
+  await expect(page.locator('.step-indicator')).toContainText('Step 1 of 6');
+});
