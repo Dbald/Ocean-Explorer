@@ -656,9 +656,8 @@ export class App {
       case 'close-card':
         return this.closeCard();
       case 'return':
+        // Closing the card also returns the camera from its close-up to the task's view.
         this.dispatch({ type: 'selectOrganism', id: null });
-        this.lastView = null;
-        this.syncScene();
         return this.focusKey('instruction');
       case 'listen':
         return this.narrate(organismById.get(a)!.narrationId, true);

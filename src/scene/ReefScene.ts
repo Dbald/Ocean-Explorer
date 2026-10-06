@@ -9,8 +9,10 @@ import { buildEnvironment, terrainHeight, type Environment } from './environment
 import { buildBarracuda, buildConch, buildElkhorn, buildParrotfish, buildSmallFish, buildTurtle, type CoralColony, type FishRig, type TurtleRig } from './organisms.ts';
 import { disposeTree, sharedTime, tagOrganism } from './util.ts';
 
-/** The parrotfish grazes on an algae-covered rock at the edge of the thicket. */
-const PARROT_HOME = { x: -12.75, z: 1.15 };
+/** The algae-covered side of the rock where the parrotfish grazes. */
+const GRAZE_ROCK = { x: -12.95, z: 0.8, radius: 0.3 };
+/** Where the barracuda pauses, side-on to the camera, while its card is open. */
+const BARRACUDA_HOLD = new THREE.Vector3(-15.0, 1.5, -0.6);
 
 export type Viewpoint = HabitatId | 'shelter';
 export type Quality = 'high' | 'low';
@@ -173,10 +175,18 @@ export class ReefScene {
     this.scene.add(coral);
 
     this.parrot = buildParrotfish();
-    this.parrot.group.position.set(PARROT_HOME.x, terrainHeight(PARROT_HOME.x, PARROT_HOME.z) + 0.42, PARROT_HOME.z);
-    this.parrot.group.rotation.set(0, Math.PI * 0.85, -0.35);
+    this.grazeTarget.set(GRAZE_ROCK.x + GRAZE_ROCK.radius + 0.02, terrainHeight(GRAZE_ROCK.x, GRAZE_ROCK.z) + 0.1, GRAZE_ROCK.z);
+    this.placeParrot(0.25, 0);
     this.register('stoplight-parrotfish', this.parrot.group);
     this.scene.add(this.parrot.group);
+    // Algae growing on the rock face where the parrotfish feeds.
+    const algae = new THREE.MeshStandardMaterial({ color: '#5f7a2e', roughness: 0.9 });
+    for (let i = 0; i < 9; i++) {
+      const blob = new THREE.Mesh(new THREE.SphereGeometry(0.035 + (i % 3) * 0.008, 8, 6), algae);
+      blob.scale.set(0.5, 1, 1.2);
+      blob.position.set(this.grazeTarget.x - 0.03 + (i % 2) * 0.012, this.grazeTarget.y - 0.06 + (i % 4) * 0.035, this.grazeTarget.z - 0.12 + i * 0.03);
+      this.scene.add(blob);
+    }
 
     this.barracuda = buildBarracuda();
     this.barracuda.group.position.set(-12.8, 2.1, -2.2);
@@ -191,6 +201,7 @@ export class ReefScene {
 
     const conch = buildConch();
     this.place(conch, 17.6, 0.9, 0.07);
+    this.conchPosition.copy(conch.position);
     conch.rotation.y = 2.4;
     this.register('queen-conch', conch);
     this.scene.add(conch);
@@ -224,10 +235,52 @@ export class ReefScene {
     });
   }
 
-  // ── Public controls ────────────────────────────────────────────────────────
+  /**
+   * Close-up framings used while an organism's card is open, so the class can
+   * actually see what the card asks them to observe (a beak, algae on a shell).
+   */
+  private closeups(): Record<string, View> {
+    const g = this.grazeTarget;
+    const turtle = this.turtle.group.position;
+    const c = this.conchPosition;
+    const h = BARRACUDA_HOLD;
+    return {
+      'stoplight-parrotfish': {
+        position: new THREE.Vector3(g.x + 0.6, g.y + 0.3, g.z + 1.15),
+        target: new THREE.Vector3(g.x + 0.25, g.y + 0.04, g.z),
+      },
+      'elkhorn-coral': { position: new THREE.Vector3(-17.4, 1.7, 3.5), target: new THREE.Vector3(-17.6, 0.65, -0.2) },
+      'great-barracuda': { position: new THREE.Vector3(h.x + 0.3, h.y + 0.25, h.z + 2.6), target: h.clone() },
+      'green-sea-turtle': {
+        position: new THREE.Vector3(turtle.x + 0.9, turtle.y + 0.75, turtle.z + 1.7),
+        target: new THREE.Vector3(turtle.x + 0.15, turtle.y + 0.05, turtle.z),
+      },
+      'queen-conch': {
+        position: new THREE.Vector3(c.x + 0.2, c.y + 0.42, c.z + 0.85),
+        target: new THREE.Vector3(c.x, c.y + 0.03, c.z),
+      },
+    };
+  }
 
+  private closeupViews: Record<string, View> | null = null;
+  private baseView: View = VIEWS.reef;
+  private baseViewName: Viewpoint = 'reef';
+
+  /** Frames a stop. While a card is open the close-up stays; closing the card returns here. */
   setViewpoint(view: Viewpoint, instant = this.opts.instantCamera) {
-    const to = VIEWS[view];
+    this.baseView = VIEWS[view];
+    this.baseViewName = view;
+    if (this.selectedId && this.closeupFor(this.selectedId)) return;
+    this.moveCamera(this.baseView, instant);
+    this.canvas.dataset.view = view;
+  }
+
+  private closeupFor(id: string): View | null {
+    this.closeupViews ??= this.closeups();
+    return this.closeupViews[id] ?? null;
+  }
+
+  private moveCamera(to: View, instant: boolean) {
     if (instant) {
       this.camera.position.copy(to.position);
       this.currentTarget.copy(to.target);
@@ -242,9 +295,25 @@ export class ReefScene {
   }
 
   setSelected(id: string | null) {
+    const changed = id !== this.selectedId;
     this.selectedId = id;
     this.updateHighlights();
+    if (!changed) return;
+    const closeup = id ? this.closeupFor(id) : null;
+    this.moveCamera(closeup ?? this.baseView, this.opts.instantCamera);
+    this.canvas.dataset.view = closeup ? `closeup:${id}` : this.baseViewName;
   }
+
+  /** d = distance of the fish's centre from the rock face; nibble tilts the head. */
+  private placeParrot(d: number, nibble: number) {
+    const g = this.grazeTarget;
+    this.parrot.group.position.set(g.x + d, g.y + 0.06 + (d - 0.25) * 0.12, g.z);
+    this.parrot.group.rotation.set(0, Math.PI, -0.25 + nibble * 0.09);
+  }
+
+  private grazeTarget = new THREE.Vector3();
+  private conchPosition = new THREE.Vector3();
+  private barracudaHold = 0;
 
   /** null = normal scene; before/after = the shelter comparison. */
   setShelterView(view: 'before' | 'after' | null) {
@@ -317,8 +386,10 @@ export class ReefScene {
   }
 
   private updateHighlights() {
+    const inCloseup = !!this.selectedId && !!this.closeupFor(this.selectedId);
     for (const [id, obj] of this.organisms) {
-      const level = id === this.selectedId ? 0.16 : id === this.hoverId ? 0.08 : 0;
+      // In a close-up the framing already shows what's selected, so the glow would only wash it out.
+      const level = id === this.selectedId ? (inCloseup ? 0 : 0.16) : id === this.hoverId ? 0.08 : 0;
       obj.traverse((o) => {
         const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
         if (mat && 'emissiveIntensity' in mat) {
@@ -331,7 +402,7 @@ export class ReefScene {
       });
     }
     const target = this.selectedId ? this.organisms.get(this.selectedId) : null;
-    this.ring.visible = !!target;
+    this.ring.visible = !!target && !inCloseup;
     if (target) {
       const box = new THREE.Box3().setFromObject(target);
       const size = box.getSize(new THREE.Vector3());
@@ -414,19 +485,44 @@ export class ReefScene {
     }
 
     const t = this.time;
+
+    // Barracuda: slow patrol on a gentle ellipse, facing its direction of travel.
+    // While its card is open it eases into a side-on hover in front of the camera.
+    const a = t * 0.12;
+    const patrol = new THREE.Vector3(-15 + Math.cos(a) * 2.2, 2.1 + Math.sin(a * 2) * 0.12, -2.2 + Math.sin(a) * 0.9);
+    const patrolYaw = Math.atan2(-Math.cos(a) * 0.9, -Math.sin(a) * 2.2);
+    const holdTarget = this.selectedId === 'great-barracuda' ? 1 : 0;
+    this.barracudaHold = this.opts.instantCamera
+      ? holdTarget
+      : THREE.MathUtils.clamp(this.barracudaHold + Math.sign(holdTarget - this.barracudaHold) * (dt / 2), 0, 1);
+    const hw = this.barracudaHold * this.barracudaHold * (3 - 2 * this.barracudaHold);
+    this.barracuda.group.position.lerpVectors(patrol, BARRACUDA_HOLD, hw);
+    const yawDelta = Math.atan2(Math.sin(0 - patrolYaw), Math.cos(0 - patrolYaw));
+    this.barracuda.group.rotation.y = patrolYaw + yawDelta * hw;
+
+    // Parrotfish: swims in, nibbles algae off the rock with its beak, backs off, repeats.
+    // With motion off it rests with its beak on the algae, so the card still makes sense.
+    if (this.opts.ambientMotion) {
+      const cycle = (t % 4.5) / 4.5;
+      const ease = (x: number) => x * x * (3 - 2 * x);
+      if (cycle < 0.3) this.placeParrot(0.6 - 0.35 * ease(cycle / 0.3), 0);
+      else if (cycle < 0.72) this.placeParrot(0.25, Math.sin(t * 16));
+      else this.placeParrot(0.25 + 0.35 * ease((cycle - 0.72) / 0.28), 0);
+    } else {
+      this.placeParrot(0.25, 0);
+    }
+
     if (!this.opts.ambientMotion) return;
 
     this.parrot.tail.rotation.y = Math.sin(t * 5) * 0.35;
-    this.parrot.group.position.x = PARROT_HOME.x + Math.sin(t * 0.8) * 0.06;
-    this.barracuda.tail.rotation.y = Math.sin(t * 2.2) * 0.2;
-    // Slow patrol on a gentle ellipse, facing the direction of travel.
-    const a = t * 0.12;
-    this.barracuda.group.position.set(-15 + Math.cos(a) * 2.2, 2.1 + Math.sin(a * 2) * 0.12, -2.2 + Math.sin(a) * 0.9);
-    this.barracuda.group.rotation.y = Math.atan2(-Math.cos(a) * 0.9, -Math.sin(a) * 2.2);
+    this.barracuda.tail.rotation.y = Math.sin(t * 2.2) * (0.2 - hw * 0.12);
     this.smallFish.tail.rotation.y = Math.sin(t * 8) * 0.4;
     if (this.fishT >= 1) this.smallFish.group.position.y = this.fishTo.y + Math.sin(t * 1.3) * 0.02;
     this.turtle.flippers.forEach((f, i) => (f.rotation.x = Math.sin(t * 0.7 + (i % 2) * Math.PI) * (i < 2 ? 0.18 : 0.08)));
-    this.turtle.head.rotation.z = Math.sin(t * 0.35) * 0.08 - 0.05;
+    // The turtle dips its head toward the seagrass now and then.
+    const dip = Math.max(0, Math.sin(t * 0.5)) ** 2;
+    this.turtle.head.rotation.z = -0.05 - dip * 0.35;
+    this.turtle.head.position.y = 0.05 - dip * 0.05;
     for (const fan of this.env.fans) fan.rotation.z = Math.sin(t * 0.6 + (fan.userData.sway as number)) * 0.06;
     this.env.shafts.children.forEach((s) => (s.rotation.z = 0.22 + Math.sin(t * 0.15 + (s.userData.phase as number)) * 0.04));
     this.env.snow.position.y = Math.sin(t * 0.1) * 0.3;

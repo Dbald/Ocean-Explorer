@@ -62,9 +62,10 @@ export function buildParrotfish(): FishRig {
   spot.position.set(-L * 0.3, 0.035, 0);
   g.add(spot);
   // Beak-like fused teeth.
-  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.05, 10), std('#e8f2ec', { roughness: 0.3 }));
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.07, 12), std('#f4fbf7', { roughness: 0.25, emissive: '#2a3a33' }));
   beak.rotation.z = -Math.PI / 2;
-  beak.position.set(L * 0.5, -0.015, 0);
+  beak.scale.set(1, 1, 0.8);
+  beak.position.set(L * 0.5 + 0.005, -0.015, 0);
   g.add(beak);
   const finMat = std('#2bb57c', { side: THREE.DoubleSide, transparent: true, opacity: 0.92 });
   const dorsal = new THREE.Mesh(finShape([[-0.15, 0.06], [0.12, 0.07], [0.1, 0.1], [-0.13, 0.09]]), finMat);

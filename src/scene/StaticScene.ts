@@ -177,11 +177,15 @@ export class StaticScene {
     const focused = (document.activeElement as HTMLElement | null)?.dataset?.organism;
     const habitat = habitatById.get(s.stop);
     const here = organisms.filter((o) => o.habitat === s.stop);
+    // While a card is open, zoom in on that organism so the class can see the detail it asks about.
+    const focus = s.selected && !s.shelterView ? HOTSPOTS[s.selected] : undefined;
+    const zoomed = !!focus && here.some((o) => o.id === s.selected);
+    const zoom = zoomed && focus ? ` style="transform: scale(2); transform-origin: ${focus.x}% ${focus.y}%"` : '';
     this.root.innerHTML = `<div class="static-frame">
-      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${habitat?.accessibleDescription ?? ''}">
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${habitat?.accessibleDescription ?? ''}"${zoom}>
         ${illustration(s.stop, s.shelterView)}
       </svg>
-      ${s.shelterView ? '' : here
+      ${s.shelterView || zoomed ? '' : here
         .map((o) => {
           const p = HOTSPOTS[o.id];
           return `<button class="hotspot${o.id === s.selected ? ' is-selected' : ''}" style="left:${p.x}%;top:${p.y}%" data-organism="${o.id}" aria-pressed="${o.id === s.selected}">${o.commonName}</button>`;

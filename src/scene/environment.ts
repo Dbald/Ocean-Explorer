@@ -186,7 +186,7 @@ function algaeTufts(r: () => number, cx: number, cz: number, spread: number, n: 
   for (let i = 0; i < n; i++) {
     const x = cx + range(r, -spread, spread);
     const z = cz + range(r, -spread * 0.6, spread * 0.6);
-    const tuft = new THREE.Mesh(new THREE.SphereGeometry(range(r, 0.04, 0.09), 8, 5), mats[i % 3]);
+    const tuft = new THREE.Mesh(new THREE.SphereGeometry(range(r, 0.04, 0.09), 14, 7), mats[i % 3]);
     tuft.scale.set(1.3, 0.35, 1);
     tuft.position.set(x, terrainHeight(x, z) + 0.01, z);
     g.add(tuft);

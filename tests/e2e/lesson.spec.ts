@@ -105,9 +105,12 @@ test('3D reef loads, organisms open from the list, and Return to lesson restores
   await press(page, 'Stoplight parrotfish');
   await expect(page.locator('#card h2')).toHaveText('Stoplight parrotfish');
   await expect(page.locator('#card')).toContainText('Algae');
+  // The camera moves in close so the class can watch the parrotfish's mouth.
+  await expect(page.locator('#stage canvas')).toHaveAttribute('data-view', 'closeup:stoplight-parrotfish');
   await page.locator('#card').getByRole('button', { name: 'Return to lesson' }).click();
   await expect(page.locator('#card')).toBeHidden();
   await expect(page.locator('[data-key="instruction"]')).toBeFocused();
+  await expect(page.locator('#stage canvas')).toHaveAttribute('data-view', 'reef');
 });
 
 test('falls back to illustrations when WebGL is unavailable', async ({ page }) => {
