@@ -4,7 +4,22 @@
  * Segments not listed fall back to the browser's voice; captions are the same
  * either way, so read the script word for word (or update the text to match).
  */
-export const recordedNarration: string[] = [];
+export const recordedNarration: string[] = [
+  'step-briefing',
+  'step-explore',
+  'step-connect',
+  'step-investigate',
+  'step-explain',
+  'step-recap',
+  'habitat-reef',
+  'habitat-seagrass',
+  'habitat-sand',
+  'organism-elkhorn-coral',
+  'organism-stoplight-parrotfish',
+  'organism-great-barracuda',
+  'organism-green-sea-turtle',
+  'organism-queen-conch',
+];
 
 export const narrationAudioSrc = (id: string) => `media/narration/${id}.mp3`;
 

@@ -28,6 +28,15 @@ export const assets: AssetRecord[] = [
   { id: 'svg-turtle', description: 'Static illustration of a green sea turtle (inline SVG)', ...project },
   { id: 'svg-conch', description: 'Static illustration of a queen conch (inline SVG)', ...project },
   { id: 'proc-environment', description: 'Water, light, seafloor, seagrass, rocks and particles (procedural)', ...project },
+  {
+    id: 'audio-narration',
+    description: 'Lesson narration recorded by Devin Baldwin (14 clips, public/media/narration)',
+    creator: 'Devin Baldwin',
+    source: 'Recorded for Ocean Explorer, October 2026',
+    license: 'Project-owned',
+    attribution: 'Narration: Devin Baldwin',
+    distribution: 'Unrestricted for Ocean Explorer',
+  },
   { id: 'audio-ambience', description: 'Ocean ambience synthesized at runtime with the Web Audio API', ...project },
   {
     id: 'lib-three',
