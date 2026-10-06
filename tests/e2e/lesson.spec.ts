@@ -1,0 +1,189 @@
+import { expect, test, type Page } from '@playwright/test';
+
+/** Activates a button with the keyboard, proving the full lesson needs no mouse. */
+async function press(page: Page, name: string | RegExp) {
+  const button = page.getByRole('button', { name, exact: typeof name === 'string' });
+  await button.focus();
+  await page.keyboard.press('Enter');
+}
+
+const dock = (page: Page) => page.locator('#dock');
+
+test('a teacher can run the whole guided lesson with only the keyboard (illustrations)', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Start lesson');
+  await expect(page.getByRole('heading', { level: 2 })).toContainText('What makes this reef a home?');
+
+  // Briefing: optional class idea, never names.
+  await page.getByLabel(/Class’s first idea/).fill('They need food');
+  await press(page, 'We shared our ideas');
+  await page.keyboard.press('n');
+
+  // Explore: visit all three stops and inspect all five organisms.
+  await expect(dock(page)).toContainText('Visit the reef');
+  for (const [stop, names] of [
+    ['1. Reef', ['Elkhorn coral', 'Stoplight parrotfish', 'Great barracuda']],
+    ['2. Seagrass meadow', ['Green sea turtle']],
+    ['3. Sandy seabed', ['Queen conch']],
+  ] as const) {
+    await press(page, stop);
+    for (const name of names) {
+      await dock(page).getByRole('button', { name: new RegExp(`^${name}`) }).focus();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('#card h2')).toHaveText(name);
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#card')).toBeHidden();
+    }
+  }
+  await expect(dock(page)).toContainText('Observed 5 of 5');
+  await page.keyboard.press('PageDown');
+
+  // Connect: a wrong answer explains and allows retry; then both relationships.
+  await press(page, 'Green sea turtle → Seagrass');
+  await press(page, 'Submit answer');
+  await expect(dock(page).locator('.feedback')).toContainText('Try again');
+  await press(page, 'Try again');
+  await press(page, 'Seagrass → Green sea turtle');
+  await press(page, 'Submit answer');
+  await expect(dock(page).locator('.feedback')).toContainText('Correct');
+  await press(page, 'Next relationship');
+  await press(page, 'Algae → Stoplight parrotfish');
+  await press(page, 'Submit answer');
+  await expect(dock(page)).toContainText('Each arrow is a separate relationship');
+  await page.keyboard.press('n');
+
+  // Investigate: no comparison before a prediction.
+  await expect(dock(page).getByRole('button', { name: 'After', exact: true })).toHaveCount(0);
+  await press(page, /look for shelter somewhere else/);
+  await press(page, 'Record class prediction');
+  await expect(dock(page)).toContainText('Simplified example');
+  await press(page, 'After');
+  await expect(dock(page)).toContainText('may need to find shelter elsewhere');
+  await press(page, 'Before');
+  await expect(dock(page)).toContainText('many spaces to hide');
+  await page.keyboard.press('n');
+
+  // Explain: three exit questions.
+  await press(page, 'Algae → Queen conch');
+  await press(page, 'Submit answer');
+  await press(page, 'Next question');
+  await press(page, /find shelter somewhere else/);
+  await press(page, 'Share answer');
+  await expect(dock(page).locator('.feedback')).toContainText('Reasonable');
+  await press(page, 'Next question');
+  await press(page, 'The seagrass meadow');
+  await expect(dock(page)).toContainText('because adult green sea turtles feed on seagrass');
+  await press(page, 'We discussed our reasons');
+  await page.keyboard.press('n');
+
+  // Recap separates completed, attempted and skipped work.
+  await expect(dock(page)).toContainText('“They need food”');
+  await expect(dock(page).locator('.recap-completed .count')).toHaveText('8');
+  await expect(dock(page).locator('.recap-skipped .count')).toHaveText('0');
+
+  // Restart clears answers after confirmation.
+  await press(page, 'Restart lesson');
+  await press(page, 'Restart');
+  await expect(page.locator('.step-indicator')).toContainText('Step 1 of 6');
+  await expect(page.getByLabel(/Class’s first idea/)).toHaveValue('');
+});
+
+test('skipping ahead leaves activities marked as skipped, not completed', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Start lesson');
+  await press(page, '6. Recap');
+  await expect(dock(page).locator('.recap-completed .count')).toHaveText('0');
+  await expect(dock(page).locator('.recap-skipped .count')).toHaveText('8');
+});
+
+test('3D reef loads, organisms open from the list, and Return to lesson restores focus', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#stage canvas')).toBeVisible();
+  await expect(page.locator('#loading')).toBeHidden({ timeout: 30_000 });
+  await press(page, 'Start lesson');
+  await press(page, '2. Explore');
+  await press(page, 'Stoplight parrotfish');
+  await expect(page.locator('#card h2')).toHaveText('Stoplight parrotfish');
+  await expect(page.locator('#card')).toContainText('Algae');
+  await page.locator('#card').getByRole('button', { name: 'Return to lesson' }).click();
+  await expect(page.locator('#card')).toBeHidden();
+  await expect(page.locator('[data-key="instruction"]')).toBeFocused();
+});
+
+test('falls back to illustrations when WebGL is unavailable', async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    // Simulate a device without WebGL.
+    (HTMLCanvasElement.prototype as unknown as { getContext: unknown }).getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+      if (String(type).startsWith('webgl')) return null;
+      return (original as (...args: unknown[]) => unknown).call(this, type, ...rest);
+    };
+  });
+  await page.goto('/');
+  await expect(page.locator('#notice')).toContainText('Showing illustrations');
+  await expect(page.locator('.static-scene svg')).toBeVisible();
+  await press(page, 'Start lesson');
+  await press(page, '2. Explore');
+  await page.locator('.static-scene').getByRole('button', { name: 'Elkhorn coral' }).click();
+  await expect(page.locator('#card h2')).toHaveText('Elkhorn coral');
+});
+
+test('a refresh offers to resume; Clear session removes saved progress', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Start lesson');
+  await press(page, '3. Connect');
+  await page.reload();
+  await expect(page.getByRole('button', { name: /Resume lesson \(step 3: Connect\)/ })).toBeVisible();
+  await press(page, /Resume lesson/);
+  await expect(page.locator('.step-indicator')).toContainText('Step 3 of 6');
+
+  await press(page, 'Settings');
+  await page.locator('#settings').getByRole('button', { name: 'Clear session' }).click();
+  await page.locator('#confirm').getByRole('button', { name: 'Clear session' }).click();
+  await expect(page.locator('#notice')).toContainText('Session cleared');
+  await page.reload();
+  await expect(page.getByRole('button', { name: /Resume/ })).toHaveCount(0);
+});
+
+test('the teacher guide is complete and opens from a link', async ({ page }) => {
+  await page.goto('/?presentation=static#guide');
+  const guide = page.locator('#guide');
+  await expect(guide).toBeVisible();
+  for (const heading of ['Before class', 'Lesson sequence', 'Vocabulary', 'Answers', 'Organisms and relationships', 'Accessibility and classroom controls', 'Transcript', 'Sources and credits']) {
+    await expect(guide.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+  }
+  await expect(guide).toContainText('Links an action, a habitat feature and an organism’s need');
+  await page.keyboard.press('Escape');
+  await expect(guide).toBeHidden();
+});
+
+test('missing optional video never blocks the lesson', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Start lesson');
+  await expect(page.getByRole('button', { name: /Message from Devin/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Next: Explore' })).toBeEnabled();
+});
+
+test('settings change text size and persist across reloads', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Settings');
+  await press(page, 'Larger text');
+  await expect(page.locator('#settings')).toContainText('110%');
+  await page.reload();
+  const scale = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--text-scale'));
+  expect(scale.trim()).toBe('1.1');
+});
+
+test('Explore mode has no task gates and starts a guided lesson from a known state', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Explore');
+  await expect(page.locator('.step-indicator')).toHaveText('Explore mode');
+  await press(page, '3. Sandy seabed');
+  await dock(page).getByRole('button', { name: /^Queen conch/ }).click();
+  await expect(page.locator('#card h2')).toHaveText('Queen conch');
+  await page.locator('#card').getByRole('button', { name: 'Close card' }).click();
+  await press(page, 'Start guided lesson');
+  await expect(page.locator('.step-indicator')).toContainText('Step 1 of 6');
+  await press(page, '2. Explore');
+  await expect(dock(page)).toContainText('Observed 0 of 5');
+});

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Ocean Explorer — Belize: The Living Reef. A teacher-led underwater field trip about how organisms depend on food and shelter." />
+    <meta name="theme-color" content="#0b4a63" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%232c9db2'/%3E%3Cpath d='M14 40c6-8 14-8 20 0s14 8 18 0' stroke='%23fff' stroke-width='5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E" />
+    <title>Ocean Explorer — The Living Reef</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#dock">Skip to lesson controls</a>
+    <div id="app" class="app">
+      <div id="stage" class="stage"></div>
+
+      <header class="topbar">
+        <p class="brand"><span class="brand-mark" aria-hidden="true">◐</span> Ocean Explorer <span class="brand-sub">Belize: The Living Reef</span></p>
+        <nav class="top-actions" aria-label="Lesson tools" id="top-actions"></nav>
+      </header>
+
+      <div id="notice" class="toast" role="status" hidden></div>
+
+      <section id="loading" class="loading" aria-live="polite" hidden>
+        <div class="loading-box">
+          <p id="loading-label">Loading the reef…</p>
+          <div class="bar" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="loading-bar"></span></div>
+          <div id="loading-actions" class="row"></div>
+        </div>
+      </section>
+
+      <section id="entry" class="entry" aria-labelledby="entry-title"></section>
+
+      <aside id="card" class="card-panel" aria-labelledby="card-title" hidden></aside>
+
+      <div id="caption-bar" class="caption-bar" hidden>
+        <p id="caption" class="caption" aria-live="polite"></p>
+        <div class="caption-controls" id="caption-controls"></div>
+      </div>
+
+      <main id="dock" class="dock" tabindex="-1" hidden></main>
+
+      <div id="video-panel" class="video-panel" hidden></div>
+      <div id="perf" class="perf" hidden aria-hidden="true"></div>
+    </div>
+
+    <dialog id="settings" class="dialog" aria-labelledby="settings-title"></dialog>
+    <dialog id="transcript" class="dialog wide" aria-labelledby="transcript-title"></dialog>
+    <dialog id="confirm" class="dialog small" aria-labelledby="confirm-title"></dialog>
+    <div id="guide" class="guide-overlay" role="dialog" aria-modal="true" aria-label="Teacher guide" hidden></div>
+
+    <noscript>Ocean Explorer needs JavaScript. Ask your teacher for the printable guide.</noscript>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
