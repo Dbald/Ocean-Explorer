@@ -17,6 +17,7 @@ function markAllReviewed(c: ContentBundle): ContentBundle {
     foodResources: r(c.foodResources),
     foodRelationships: r(c.foodRelationships),
     shelterRelationships: r(c.shelterRelationships),
+    findables: r(c.findables),
   };
 }
 
@@ -47,6 +48,19 @@ describe('content structure', () => {
     const eaten = new Set(content.foodRelationships.map((r) => r.food));
     const eaters = new Set(content.foodRelationships.map((r) => r.consumer));
     expect([...eaten].filter((x) => eaters.has(x))).toEqual([]);
+  });
+});
+
+describe('findables', () => {
+  it('gives every child something to tap: at least 20 animals across all three stops', () => {
+    expect(content.findables.length).toBeGreaterThanOrEqual(20);
+    for (const stop of ['reef', 'seagrass', 'sand']) {
+      expect(content.findables.filter((f) => f.habitat === stop).length, stop).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('includes every featured organism', () => {
+    for (const o of organisms) expect(content.findables.find((f) => f.id === o.id)?.featured, o.id).toBe(true);
   });
 });
 

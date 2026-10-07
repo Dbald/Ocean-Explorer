@@ -4,7 +4,7 @@
  * when 3D is unavailable or turned off.
  */
 import { habitatById } from '../content/habitats.ts';
-import { organisms } from '../content/organisms.ts';
+import { findablesAt } from '../content/findables.ts';
 import type { HabitatId } from '../content/types.ts';
 
 /** Hotspot positions as percentages of the illustration (x, y). */
@@ -12,9 +12,122 @@ const HOTSPOTS: Record<string, { x: number; y: number }> = {
   'elkhorn-coral': { x: 32, y: 52 },
   'stoplight-parrotfish': { x: 70, y: 62 },
   'great-barracuda': { x: 58, y: 24 },
+  'brain-coral': { x: 85, y: 76 },
+  'sea-fan': { x: 47, y: 58 },
+  'tube-sponge': { x: 17, y: 68 },
+  'nurse-shark': { x: 52, y: 89 },
+  'spiny-lobster': { x: 80, y: 88 },
+  'sea-urchin': { x: 26, y: 88 },
+  'green-moray': { x: 94, y: 74 },
+  'reef-octopus': { x: 40, y: 92 },
+  'blue-tang': { x: 75, y: 33 },
+  'sergeant-major': { x: 19, y: 42 },
   'green-sea-turtle': { x: 50, y: 58 },
+  'eagle-ray': { x: 74, y: 24 },
+  'cushion-star': { x: 19, y: 85 },
+  'sea-cucumber': { x: 79, y: 87 },
   'queen-conch': { x: 52, y: 74 },
+  'southern-stingray': { x: 76, y: 80 },
+  'hermit-crab': { x: 26, y: 84 },
 };
+
+// ── Spotter animals (simple, readable shapes) ─────────────────────────────
+
+const seaFan = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})" stroke="#7d4fa0" stroke-width="6" fill="none" stroke-linecap="round">
+    <path d="M0 0 L0 -40 M0 -40 L-70 -150 M0 -40 L-30 -170 M0 -40 L20 -175 M0 -40 L70 -150 M-50 -110 L50 -110 M-60 -140 L60 -140"/>
+    <path d="M-70 -150 Q0 -210 70 -150" stroke-width="8"/>
+  </g>`;
+
+const nurseShark = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})">
+    <path d="M-260 0 L-330 -40 L-310 5 L-330 30Z" fill="#94764c"/>
+    <ellipse cx="0" cy="0" rx="270" ry="38" fill="#a8875a"/>
+    <ellipse cx="20" cy="14" rx="210" ry="16" fill="#d9c49a"/>
+    <path d="M-60 -34 L-30 -78 L0 -34Z M-150 -30 L-128 -62 L-108 -30Z" fill="#94764c"/>
+    <circle cx="210" cy="-10" r="7" fill="#0b0f14"/>
+    <path d="M262 8 l14 10 M262 4 l14 4" stroke="#7a6040" stroke-width="3"/>
+  </g>`;
+
+const lobster = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})" stroke-linecap="round">
+    <path d="M40 -10 Q140 -90 230 -60 M40 -4 Q150 -40 240 -10" stroke="#9a4b2c" stroke-width="5" fill="none"/>
+    <ellipse cx="10" cy="0" rx="50" ry="26" fill="#9a4b2c"/>
+    ${[0, 1, 2, 3].map((i) => `<ellipse cx="${-50 - i * 26}" cy="4" rx="16" ry="${18 - i * 2}" fill="${i % 2 ? '#e8c27a' : '#9a4b2c'}"/>`).join('')}
+    <path d="M-150 4 l-30 -20 l0 40Z" fill="#9a4b2c"/>
+    <circle cx="40" cy="-12" r="5" fill="#0b0f14"/>
+  </g>`;
+
+const urchin = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})" stroke="#16141c" stroke-width="4" stroke-linecap="round">
+    ${Array.from({ length: 22 }, (_, i) => { const a = Math.PI + (i / 21) * Math.PI; return `<line x1="0" y1="0" x2="${Math.cos(a) * 85}" y2="${Math.sin(a) * 85}"/>`; }).join('')}
+    <ellipse cx="0" cy="0" rx="34" ry="24" fill="#16141c"/>
+  </g>`;
+
+const moray = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})">
+    <ellipse cx="40" cy="20" rx="120" ry="80" fill="#6f6a5c"/>
+    <ellipse cx="0" cy="10" rx="40" ry="30" fill="#2a2620"/>
+    <path d="M10 10 Q-30 -40 -70 -40 Q-110 -40 -110 -20 Q-90 0 -60 -10 Q-30 -10 -10 25Z" fill="#5d7a2a"/>
+    <path d="M-110 -20 Q-90 -8 -70 -18" stroke="#2a1418" stroke-width="4" fill="none"/>
+    <circle cx="-80" cy="-32" r="5" fill="#0b0f14"/>
+  </g>`;
+
+const octopus = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})" stroke="#4f9a8f" stroke-width="12" stroke-linecap="round" fill="none">
+    ${[-1, -0.6, -0.2, 0.2, 0.6, 1].map((k) => `<path d="M0 0 Q${k * 60} 30 ${k * 110} ${10 + Math.abs(k) * 10} q${k * 20} -20 ${k * 10} -30"/>`).join('')}
+    <ellipse cx="0" cy="-40" rx="42" ry="52" fill="#4f9a8f" stroke="none"/>
+    <circle cx="-14" cy="-20" r="6" fill="#0b0f14" stroke="none"/><circle cx="14" cy="-20" r="6" fill="#0b0f14" stroke="none"/>
+  </g>`;
+
+const littleFish = (x: number, y: number, body: string, tail: string, stripes = false) => `
+  <g transform="translate(${x} ${y})">
+    <path d="M-40 0 L-62 -18 L-58 0 L-62 18Z" fill="${tail}"/>
+    <ellipse cx="0" cy="0" rx="44" ry="26" fill="${body}"/>
+    ${stripes ? [-22, -6, 10].map((sx) => `<rect x="${sx}" y="-24" width="7" height="48" fill="#1b1d22"/>`).join('') : ''}
+    <circle cx="26" cy="-6" r="5" fill="#0b0f14"/>
+  </g>`;
+
+const trio = (x: number, y: number, body: string, tail: string, stripes = false) =>
+  littleFish(x, y, body, tail, stripes) + littleFish(x + 90, y - 40, body, tail, stripes) + littleFish(x + 70, y + 45, body, tail, stripes);
+
+const eagleRay = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})">
+    <path d="M60 0 L-60 -150 L-40 0 L-60 150Z" fill="#262e3a"/>
+    <path d="M-40 0 L-260 6" stroke="#262e3a" stroke-width="5"/>
+    <ellipse cx="70" cy="0" rx="40" ry="26" fill="#262e3a"/>
+    ${[[-10, -60], [-30, -100], [0, -30], [-10, 60], [-30, 100], [0, 30], [20, -10], [20, 10]].map(([sx, sy]) => `<circle cx="${sx}" cy="${sy}" r="7" fill="#f2f4f6"/>`).join('')}
+  </g>`;
+
+const cushionStar = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})">
+    <path d="${Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + (i * Math.PI) / 5; const r = i % 2 ? 34 : 80; return `${i ? 'L' : 'M'}${Math.cos(a) * r} ${Math.sin(a) * r * 0.6}`; }).join(' ')}Z" fill="#d9762b" stroke="#b85f1f" stroke-width="4" stroke-linejoin="round"/>
+    ${[[0, -20], [-30, 0], [30, 0], [-15, 18], [15, 18]].map(([bx, by]) => `<circle cx="${bx}" cy="${by}" r="6" fill="#f1b05a"/>`).join('')}
+  </g>`;
+
+const seaCucumber = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})">
+    <rect x="-110" y="-26" width="220" height="52" rx="26" fill="#6b4a2b"/>
+    ${[-80, -50, -20, 10, 40, 70].map((bx, i) => `<circle cx="${bx}" cy="${i % 2 ? -10 : 8}" r="6" fill="#8a6640"/>`).join('')}
+  </g>`;
+
+const stingray = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})">
+    <path d="M-150 0 L-330 10" stroke="#8f8775" stroke-width="5"/>
+    <path d="M150 0 Q20 -70 -10 -80 Q-110 -40 -160 0 Q-110 40 -10 80 Q20 70 150 0Z" fill="#8f8775"/>
+    <ellipse cx="-20" cy="60" rx="90" ry="16" fill="#d6c79c"/><ellipse cx="-10" cy="-62" rx="80" ry="14" fill="#d6c79c"/>
+    <circle cx="70" cy="-14" r="8" fill="#0b0f14"/><circle cx="70" cy="14" r="8" fill="#0b0f14"/>
+  </g>`;
+
+const hermitCrab = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})">
+    <path d="M-80 20 Q-90 -60 -10 -60 Q50 -50 40 20Z" fill="#c9a36a"/>
+    <path d="M-60 0 Q-50 -40 -10 -36 Q20 -30 15 0" stroke="#a9834a" stroke-width="6" fill="none"/>
+    <ellipse cx="55" cy="10" rx="26" ry="18" fill="#c23b22"/>
+    <path d="M60 -6 l0 -26 M74 -4 l4 -26" stroke="#c23b22" stroke-width="5"/>
+    <circle cx="60" cy="-34" r="6" fill="#111"/><circle cx="78" cy="-32" r="6" fill="#111"/>
+    <path d="M40 24 l-12 18 M60 26 l0 20 M78 22 l12 16" stroke="#c23b22" stroke-width="6" stroke-linecap="round"/>
+  </g>`;
 
 const water = `
   <defs>
@@ -129,7 +242,12 @@ function illustration(stop: HabitatId, shelterView: 'before' | 'after' | null) {
     case 'reef':
       return `${water}${floor('#8c8466')}
         <ellipse cx="1220" cy="700" rx="120" ry="70" fill="#7a7363"/>
-        <ellipse cx="1360" cy="690" rx="90" ry="60" fill="#b59f63"/>
+        <ellipse cx="1360" cy="690" rx="90" ry="60" fill="#c2a25e"/>
+        <path d="M1290 690 q20 -30 40 0 t40 0 t40 0 M1300 665 q20 -25 40 0 t40 0 t30 0 M1310 715 q20 -20 40 0 t40 0 t30 0" stroke="#8c7440" stroke-width="5" fill="none"/>
+        ${seaFan(760, 560)}
+        ${moray(1500, 670)}
+        ${trio(1140, 300, '#2357d8', '#2357d8')}
+        ${trio(250, 380, '#f4f1df', '#e9d84a', true)}
         <ellipse cx="190" cy="705" rx="120" ry="70" fill="#7a7363"/>
         <g fill="#d9792f"><rect x="250" y="600" width="26" height="100" rx="10"/><rect x="282" y="620" width="24" height="80" rx="10"/></g>
         ${elkhorn(520, 720, 1.4, reduced)}
@@ -137,17 +255,26 @@ function illustration(stop: HabitatId, shelterView: 'before' | 'after' | null) {
         ${shelterView ? `<circle cx="${reduced ? 215 : 500}" cy="${reduced ? 620 : 520}" r="56" fill="none" stroke="#7dffb2" stroke-width="6" stroke-dasharray="14 10"/>` : ''}
         ${parrotfish(1120, 600)}
         <g fill="#5f7a2e">${[1180, 1210, 1240, 1260].map((x) => `<path d="M${x} 650 l8 -24 l8 24Z"/>`).join('')}</g>
-        <g transform="translate(930 210) scale(0.6) translate(-930 -210)">${barracuda(930, 210)}</g>`;
+        <g transform="translate(930 210) scale(0.6) translate(-930 -210)">${barracuda(930, 210)}</g>
+        ${urchin(420, 800)}
+        ${octopus(640, 830)}
+        <g transform="translate(830 800) scale(0.75) translate(-830 -800)">${nurseShark(830, 800)}</g>
+        <g transform="translate(1250 790) scale(0.7) translate(-1250 -790)">${lobster(1250, 790)}</g>`;
     case 'seagrass':
       return `${water}${floor('#8f8d5e')}
         ${seagrassBlades(0, 1600, 720, 110, 3)}
         ${turtle(800, 520)}
-        ${seagrassBlades(0, 1600, 760, 70, 17)}`;
+        ${seagrassBlades(0, 1600, 760, 70, 17)}
+        ${eagleRay(1180, 220)}
+        ${cushionStar(300, 765)}
+        ${seaCucumber(1260, 785)}`;
     case 'sand':
       return `${water}${floor('#e3d4ab', true)}
         ${seagrassBlades(0, 420, 720, 40, 9)}
         <g fill="#5f7a2e">${[700, 760, 900, 980, 1050].map((x) => `<path d="M${x} 700 l7 -20 l7 20Z"/>`).join('')}</g>
-        ${conch(840, 680)}`;
+        ${conch(840, 680)}
+        ${stingray(1230, 720)}
+        ${hermitCrab(420, 760)}`;
   }
 }
 
@@ -155,6 +282,10 @@ export interface StaticSceneState {
   stop: HabitatId;
   selected: string | null;
   shelterView: 'before' | 'after' | null;
+  /** In the "Can you find…?" game the buttons carry no visible names, so the picture is the puzzle. */
+  labels: boolean;
+  /** An animal to point out (game hint). */
+  hint: string | null;
 }
 
 export class StaticScene {
@@ -171,12 +302,12 @@ export class StaticScene {
   }
 
   render(s: StaticSceneState) {
-    const key = `${s.stop}|${s.selected}|${s.shelterView}`;
+    const key = `${s.stop}|${s.selected}|${s.shelterView}|${s.labels}|${s.hint}`;
     if (key === this.lastKey) return;
     this.lastKey = key;
     const focused = (document.activeElement as HTMLElement | null)?.dataset?.organism;
     const habitat = habitatById.get(s.stop);
-    const here = organisms.filter((o) => o.habitat === s.stop);
+    const here = findablesAt(s.stop);
     // While a card is open, zoom in on that organism so the class can see the detail it asks about.
     const focus = s.selected && !s.shelterView ? HOTSPOTS[s.selected] : undefined;
     const zoomed = !!focus && here.some((o) => o.id === s.selected);
@@ -188,7 +319,8 @@ export class StaticScene {
       ${s.shelterView || zoomed ? '' : here
         .map((o) => {
           const p = HOTSPOTS[o.id];
-          return `<button class="hotspot${o.id === s.selected ? ' is-selected' : ''}" style="left:${p.x}%;top:${p.y}%" data-organism="${o.id}" aria-pressed="${o.id === s.selected}">${o.commonName}</button>`;
+          const cls = `hotspot${s.labels ? '' : ' is-blank'}${o.id === s.selected ? ' is-selected' : ''}${o.id === s.hint ? ' is-hint' : ''}`;
+          return `<button class="${cls}" style="left:${p.x}%;top:${p.y}%" data-organism="${o.id}" aria-label="${o.title}" aria-pressed="${o.id === s.selected}">${s.labels ? o.title : ''}</button>`;
         })
         .join('')}</div>`;
     this.root.querySelectorAll<HTMLButtonElement>('[data-organism]').forEach((b) =>

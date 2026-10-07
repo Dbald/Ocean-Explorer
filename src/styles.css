@@ -261,6 +261,21 @@ details[open] > summary::before { transform: rotate(90deg); }
 .teacher-notes { margin-top: 0.9em; border-top: 2px dashed var(--line); padding-top: 0.4em; font-size: 0.82em; }
 .teacher-notes ul { margin: 0.3em 0; padding-left: 1.2em; }
 
+/* ── "Can you find…?" game ─────────────────────────────────────────── */
+.find-prompt { font-size: 1.6em; color: var(--accent); line-height: 1.15; }
+.find-line { font-size: 1.15em; font-weight: 600; background: var(--panel-2); border-left: 6px solid var(--good); padding: 0.5em 0.7em; border-radius: 8px; }
+.find-feedback { font-size: 1em; }
+.find-dots { display: flex; flex-wrap: wrap; gap: 6px; margin: 0.6em 0; }
+.find-dots .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); background: transparent; }
+.find-dots .dot.is-found { background: var(--good); border-color: var(--good); }
+.find-dots .dot.is-current { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.35); }
+.find-dots .dot.is-skipped { border-style: dashed; }
+.find-list { margin-top: 0.4em; font-size: 0.85em; }
+.spotter-list .organism-btn { font-size: 0.8em; }
+.hotspot.is-blank { width: 3.2em; height: 3.2em; padding: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.08); border: 3px dashed rgba(255, 255, 255, 0.55); }
+.hotspot.is-hint { border-color: var(--accent); border-style: solid; box-shadow: 0 0 0 6px rgba(255, 209, 102, 0.55); animation: oe-pulse 0.8s ease-in-out infinite alternate; }
+@keyframes oe-pulse { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(1.18); } }
+
 /* ── Organism card ──────────────────────────────────────────────────────── */
 .card-panel {
   /* The card takes over the lesson column so it never covers the organism it describes. */
@@ -357,6 +372,8 @@ details[open] > summary::before { transform: rotate(90deg); }
 .rec-meter { width: 9em; height: 12px; border-radius: 999px; background: #c9dde2; overflow: hidden; }
 .rec-meter span { display: block; height: 100%; width: 0; background: #1f8a57; transition: width 0.06s linear; }
 .recorder section { margin-top: 1em; }
+.recorder .rec-done { margin-top: 0.8em; border: 2px solid #b8d6dd; border-radius: 12px; padding: 0.2em 0.8em; background: #eef6f8; }
+.recorder .rec-done summary { color: #1f6b4a; }
 .rec-line { border: 2px solid #b8d6dd; border-radius: 12px; padding: 0.6em 0.8em; margin: 0.6em 0; background: #fff; }
 .rec-line.is-recording { border-color: #c0392b; box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.2); }
 .rec-text { font-size: 1.35em; line-height: 1.45; margin: 0.2em 0 0.5em; max-width: 46em; }

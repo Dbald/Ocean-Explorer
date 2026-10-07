@@ -109,6 +109,12 @@ scripts/          Content validation / release gate
 | Rendering | 60 FPS reference, ≥ 30 FPS classroom | **Settings → Show performance** shows live FPS |
 | Control feedback | ≈ 200 ms | Local UI updates synchronously |
 
+## Can you find…? and bonus animals
+
+Twenty animals can be tapped, across all three stops: the five featured organisms plus 15 "spotters", including brain coral, sea fan, sponge, nurse shark, spiny lobster, sea urchin, green moray, octopus, blue tangs, sergeant majors, spotted eagle ray, cushion sea star, sea cucumber, southern stingray and hermit crab. Each one wiggles and reads a one-line fact aloud, and small animals have generous invisible tap areas for small fingers.
+
+**Can you find…?** (start screen or Explore) is a turn-taking game for the youngest classes. The board asks for one animal at a time. Any tap gets a response, and the right one is celebrated with a close-up. Hint, Hear it again and Skip this animal keep it moving. Spotter content lives in `src/content/findables.ts` with sources and review status, like the featured organisms.
+
 ## Your own voice
 
 The narration can use recordings of your own voice in place of the browser voice: 14 short lines, about 3½ minutes in total. Open `/#record` (or **Teacher guide → Record narration**) to record them line by line in the browser. See [docs/narration.md](docs/narration.md) for the full script and how recordings are added.

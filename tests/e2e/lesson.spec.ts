@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { narration } from '../../src/content/narration.ts';
 
 /** Activates a button with the keyboard, proving the full lesson needs no mouse. */
 async function press(page: Page, name: string | RegExp) {
@@ -152,7 +153,7 @@ test('the teacher guide is complete and opens from a link', async ({ page }) => 
   await page.goto('/?presentation=static#guide');
   const guide = page.locator('#guide');
   await expect(guide).toBeVisible();
-  for (const heading of ['Before class', 'Lesson sequence', 'Vocabulary', 'Answers', 'Organisms and relationships', 'Accessibility and classroom controls', 'Transcript', 'Sources and credits']) {
+  for (const heading of ['Before class', 'Lesson sequence', 'Can you find…? (great for TK–2)', 'Vocabulary', 'Answers', 'Organisms and relationships', 'Accessibility and classroom controls', 'Transcript', 'Sources and credits']) {
     await expect(guide.getByRole('heading', { name: heading, exact: true })).toBeVisible();
   }
   await expect(guide).toContainText('Links an action, a habitat feature and an organism’s need');
@@ -195,13 +196,15 @@ test('the narration recorder lists every line and records a take', async ({ page
   await page.goto('/?presentation=static#record');
   const rec = page.locator('#recorder');
   await expect(rec.getByRole('heading', { name: 'Record your narration' })).toBeVisible();
-  await expect(rec.locator('.rec-line')).toHaveCount(14);
-  await rec.getByRole('button', { name: 'Record' }).first().click();
+  await expect(rec.locator('.rec-line')).toHaveCount(narration.length);
+  // Sections already recorded fold away; the first open section is the new animal facts.
+  await expect(rec.locator('details.rec-done').first()).toContainText('already in the lesson');
+  await rec.locator('section [data-rec="record"]').first().click();
   await expect(rec.getByText('Recording…')).toBeVisible();
   await page.waitForTimeout(600);
   await rec.getByRole('button', { name: 'Stop' }).click();
-  await expect(rec.getByRole('link', { name: 'Save file' })).toHaveAttribute('download', /^step-briefing\./);
-  await expect(rec.locator('.rec-progress')).toContainText('1 of 14');
+  await expect(rec.getByRole('link', { name: 'Save file' })).toHaveAttribute('download', /^spotter-elkhorn-coral\./);
+  await expect(rec.locator('.rec-progress')).toContainText(`1 of ${narration.length}`);
   await page.keyboard.press('Escape');
   await expect(rec).toBeHidden();
 });
@@ -222,4 +225,59 @@ test('older classroom-board browsers run the legacy build', async ({ page }) => 
   await press(page, 'Start lesson');
   await expect(page.locator('#dock')).toHaveCount(1);
   await expect(page.locator('.step-indicator')).toContainText('Step 1 of 6');
+});
+
+test('"Can you find…?" gives every tap a response and moves through the animals', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Can you find…?');
+  await expect(page.locator('.step-indicator')).toHaveText('Can you find…?');
+  const order: string[] = await page.evaluate(() => JSON.parse(localStorage.getItem('ocean-explorer:session:v1')!).find.order);
+  expect(order.length).toBeGreaterThanOrEqual(20);
+  const prompt = page.locator('.find-prompt');
+  await expect(prompt).toContainText('Can you find the');
+  // In the game the picture is the puzzle: tap areas carry no visible names.
+  await expect(page.locator('.static-scene .hotspot').first()).toHaveClass(/is-blank/);
+  await expect(page.locator('.static-scene .hotspot').first()).toHaveText('');
+
+  // A different animal still says hello, but doesn't count.
+  const wrong = await page.locator('.static-scene .hotspot').evaluateAll((els, t) => els.find((e) => (e as HTMLElement).dataset.organism !== t)?.getAttribute('data-organism'), order[0]);
+  await page.locator(`.static-scene [data-organism="${wrong}"]`).click();
+  await expect(page.locator('.find-feedback')).toContainText('Keep looking');
+  await expect(page.locator('.find-dots .is-found')).toHaveCount(0);
+
+  // Hint points out the right one.
+  await press(page, 'Hint');
+  await expect(page.locator(`.static-scene [data-organism="${order[0]}"]`)).toHaveClass(/is-hint/);
+
+  // The right animal is found, read aloud on screen, and counted.
+  await page.locator(`.static-scene [data-organism="${order[0]}"]`).click();
+  await expect(prompt).toContainText('You found the');
+  await expect(page.locator('.find-line')).not.toBeEmpty();
+  await expect(page.locator('.find-dots .is-found')).toHaveCount(1);
+  await press(page, 'Next animal');
+  await expect(prompt).toContainText('Can you find the');
+
+  // Skipping the rest reaches the end screen with the real-ocean reminder.
+  for (let i = 1; i < order.length; i++) await page.locator('#dock [data-action="find-next"]').click();
+  await expect(page.locator('#dock')).toContainText('You found 1 animal!');
+  await expect(page.locator('#dock')).toContainText('we never touch them');
+});
+
+test('bonus animals in Explore open a short card with a read-aloud fact', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Explore');
+  await expect(page.locator('.spotter-list .organism-btn')).toHaveCount(10);
+  await page.locator('.spotter-list').getByRole('button', { name: 'Long-spined sea urchin' }).click();
+  await expect(page.locator('#card h2')).toHaveText('Long-spined sea urchin');
+  await expect(page.locator('#card .find-line')).toContainText('spines');
+  // Bonus animals don't count toward the five featured organisms.
+  await expect(page.locator('.progress-note')).toContainText('Observed 0 of 5');
+});
+
+test('in 3D, a bonus animal gets its own close-up', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#loading')).toBeHidden({ timeout: 30_000 });
+  await press(page, 'Explore');
+  await page.locator('.spotter-list').getByRole('button', { name: 'Nurse shark' }).click();
+  await expect(page.locator('#stage canvas')).toHaveAttribute('data-view', 'closeup:nurse-shark');
 });

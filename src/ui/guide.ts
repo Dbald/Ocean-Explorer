@@ -3,6 +3,7 @@
  * lesson without Devin present. The same markup is used on screen and in print.
  */
 import { assets } from '../content/assets.ts';
+import { findables } from '../content/findables.ts';
 import { foodRelationships, shelterRelationships } from '../content/food.ts';
 import { habitatById } from '../content/habitats.ts';
 import {
@@ -77,6 +78,25 @@ export function renderGuide(availableVideos: string[]) {
             )
             .join('')}
         </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Can you find…? (great for TK–2)</h2>
+      <p>A turn-taking game that gives every child a chance to come up and tap. Choose <strong>Can you find…?</strong> on the start screen or in Explore.</p>
+      <ol>
+        <li>The board asks for one animal, for example “Can you find the sea star?”. Invite one child up to tap it.</li>
+        <li>Tapping a different animal is never wrong: it wiggles and says what it is, and the board asks the child to keep looking.</li>
+        <li>When the right animal is found, the camera moves in close and the animal’s fact is read aloud. Choose <strong>Next animal</strong> for the next child.</li>
+        <li><strong>Hint</strong> makes the animal wiggle with a ring around it. <strong>Hear it again</strong> repeats the question. <strong>Skip this animal</strong> moves on.</li>
+      </ol>
+      <p>There are ${findables.length} animals across the three stops, enough for a whole class to have a turn. The game finishes with a reminder that in the real ocean we look at animals but never touch them.</p>
+      <p class="small">Keyboard and switch users can open <em>Choose from a list</em> in the panel. In the illustrations view the tap areas have no labels, so the picture is the puzzle.</p>
+      <table>
+        <thead><tr><th scope="col">Animal</th><th scope="col">Stop</th><th scope="col">What children hear</th></tr></thead>
+        <tbody>${findables
+          .map((f) => `<tr><th scope="row">${esc(f.title)}${f.featured ? ' <span class="small">(featured)</span>' : ''}</th><td>${esc(habitatById.get(f.habitat)!.title)}</td><td>${esc(f.line)}</td></tr>`)
+          .join('')}</tbody>
       </table>
     </section>
 

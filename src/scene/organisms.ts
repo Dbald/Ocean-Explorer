@@ -6,11 +6,11 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { range, rng, type Rand } from './util.ts';
 
-const std = (color: THREE.ColorRepresentation, extra: THREE.MeshStandardMaterialParameters = {}) =>
+export const std = (color: THREE.ColorRepresentation, extra: THREE.MeshStandardMaterialParameters = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0, ...extra });
 
 /** A spindle-shaped fish body along +x (head at +x). */
-function fishBody(length: number, height: number, width: number, tailTaper: number, headTaper: number) {
+export function fishBody(length: number, height: number, width: number, tailTaper: number, headTaper: number) {
   const pts: THREE.Vector2[] = [];
   const peakT = tailTaper / (tailTaper + headTaper);
   const peak = Math.pow(peakT, tailTaper) * Math.pow(1 - peakT, headTaper);
@@ -26,7 +26,7 @@ function fishBody(length: number, height: number, width: number, tailTaper: numb
   return g;
 }
 
-function finShape(points: [number, number][]) {
+export function finShape(points: [number, number][]) {
   const shape = new THREE.Shape();
   shape.moveTo(points[0][0], points[0][1]);
   for (const [x, y] of points.slice(1)) shape.lineTo(x, y);
@@ -34,7 +34,7 @@ function finShape(points: [number, number][]) {
   return new THREE.ShapeGeometry(shape);
 }
 
-function eyes(group: THREE.Group, x: number, y: number, z: number, r: number) {
+export function eyes(group: THREE.Group, x: number, y: number, z: number, r: number) {
   const eyeMat = std('#0b0f14', { roughness: 0.2 });
   for (const side of [1, -1]) {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), eyeMat);

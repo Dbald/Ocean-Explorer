@@ -1,4 +1,5 @@
 import { assets } from './assets.ts';
+import { findables } from './findables.ts';
 import { foodRelationships, foodResources, shelterRelationships } from './food.ts';
 import { habitats } from './habitats.ts';
 import { connectItems, exitQuestions } from './lesson.ts';
@@ -18,4 +19,5 @@ export const content: ContentBundle = {
   assets,
   connectItems,
   exitQuestions,
+  findables,
 };

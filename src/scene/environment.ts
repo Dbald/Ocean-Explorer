@@ -85,7 +85,8 @@ function boulderCoral(r: () => number, size: number, color: string) {
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const v = new THREE.Vector3().fromBufferAttribute(pos, i);
-    const ridges = Math.sin(v.x * 40 + Math.sin(v.z * 30) * 2) * 0.012;
+    // Maze-like grooves, like a brain coral's surface.
+    const ridges = Math.sin(v.x * 34 + Math.sin(v.z * 26) * 2.4 + Math.cos(v.y * 18)) * 0.03;
     v.multiplyScalar(1 + ridges + noise2(v.x * 5, v.z * 5) * 0.04);
     v.y = Math.max(v.y * 0.7, -0.05);
     pos.setXYZ(i, v.x, v.y, v.z);
@@ -186,7 +187,7 @@ function algaeTufts(r: () => number, cx: number, cz: number, spread: number, n: 
   for (let i = 0; i < n; i++) {
     const x = cx + range(r, -spread, spread);
     const z = cz + range(r, -spread * 0.6, spread * 0.6);
-    const tuft = new THREE.Mesh(new THREE.SphereGeometry(range(r, 0.04, 0.09), 14, 7), mats[i % 3]);
+    const tuft = new THREE.Mesh(new THREE.SphereGeometry(range(r, 0.025, 0.055), 12, 6), mats[i % 3]);
     tuft.scale.set(1.3, 0.35, 1);
     tuft.position.set(x, terrainHeight(x, z) + 0.01, z);
     g.add(tuft);
@@ -237,6 +238,8 @@ export interface Environment {
   shafts: THREE.Group;
   snow: THREE.Points;
   fans: THREE.Mesh[];
+  sponges: THREE.Group[];
+  boulders: THREE.Mesh[];
   /** Rock crevice where the small fish goes to find shelter elsewhere. */
   shelterElsewhere: THREE.Vector3;
 }
@@ -255,23 +258,28 @@ export function buildEnvironment(avoid: { x: number; z: number; r: number }[]): 
     [-9, 0.6, -3.2],
     [-17.8, 0.45, -4.5],
     [-7.4, 0.35, -0.8],
+    // The rocky hole the green moray peeks out of.
+    [-11.95, 0.36, -0.75],
   ];
   for (const [x, size, z] of rockSpots) {
     const m = rock(r, size, '#7a7363');
     m.position.set(x, terrainHeight(x, z) + size * 0.2, z);
     root.add(m);
   }
-  const boulders: [number, number, number, string][] = [
+  // Brain corals (the first one is in clear view from the reef stop).
+  const boulderSpots: [number, number, number, string][] = [
+    [-15.6, 1.6, 0.34, '#c2a25e'],
     [-13, -3.6, 0.55, '#b59f63'],
-    [-19.5, -1.4, 0.45, '#8c9a55'],
+    [-19.5, -1.4, 0.45, '#a8955a'],
     [-10.2, -1.9, 0.4, '#a98a5c'],
-    [-15.6, 1.6, 0.3, '#9da35d'],
     [-21.5, 1.3, 0.35, '#b59f63'],
   ];
-  for (const [x, z, size, color] of boulders) {
+  const boulders: THREE.Mesh[] = [];
+  for (const [x, z, size, color] of boulderSpots) {
     const m = boulderCoral(r, size, color);
     m.position.set(x, terrainHeight(x, z), z);
     root.add(m);
+    boulders.push(m);
   }
   const fans: THREE.Mesh[] = [];
   for (const [x, z, s] of [
@@ -286,12 +294,14 @@ export function buildEnvironment(avoid: { x: number; z: number; r: number }[]): 
     root.add(fan);
     fans.push(fan);
   }
+  const sponges: THREE.Group[] = [];
   for (const [x, z, color] of [
     [-18.6, 0.9, '#d9792f'],
     [-9.8, 0.2, '#7d4a9e'],
     [-21.4, -0.8, '#c96a2b'],
   ] as const) {
     const sp = tubeSponge(r, color);
+    sponges.push(sp);
     sp.position.set(x, terrainHeight(x, z), z);
     root.add(sp);
   }
@@ -306,5 +316,5 @@ export function buildEnvironment(avoid: { x: number; z: number; r: number }[]): 
   const snow = marineSnow(600);
   root.add(snow);
 
-  return { root, seagrass, shafts, snow, fans, shelterElsewhere: new THREE.Vector3(-18.92, 0.3, 1.12) };
+  return { root, seagrass, shafts, snow, fans, sponges, boulders, shelterElsewhere: new THREE.Vector3(-18.92, 0.3, 1.12) };
 }

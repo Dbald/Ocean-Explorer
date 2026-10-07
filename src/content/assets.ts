@@ -27,6 +27,9 @@ export const assets: AssetRecord[] = [
   { id: 'svg-barracuda', description: 'Static illustration of a great barracuda (inline SVG)', ...project },
   { id: 'svg-turtle', description: 'Static illustration of a green sea turtle (inline SVG)', ...project },
   { id: 'svg-conch', description: 'Static illustration of a queen conch (inline SVG)', ...project },
+  { id: 'proc-brain-coral', description: '3D brain coral boulders built from procedural geometry', ...project },
+  { id: 'proc-spotters', description: '3D spotter animals (shark, rays, lobster, urchin, eel, octopus, fish, sea star, sea cucumber, hermit crab), procedural', ...project },
+  { id: 'svg-spotters', description: 'Static illustrations of the spotter animals (inline SVG)', ...project },
   { id: 'proc-environment', description: 'Water, light, seafloor, seagrass, rocks and particles (procedural)', ...project },
   {
     id: 'audio-narration',

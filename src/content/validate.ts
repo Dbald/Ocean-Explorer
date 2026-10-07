@@ -2,6 +2,7 @@ import type {
   AssetRecord,
   ContentRecord,
   ExitQuestion,
+  Findable,
   FoodChoiceItem,
   FoodRelationship,
   FoodResource,
@@ -23,6 +24,7 @@ export interface ContentBundle {
   assets: AssetRecord[];
   connectItems: FoodChoiceItem[];
   exitQuestions: ExitQuestion[];
+  findables: Findable[];
 }
 
 export interface ValidationResult {
@@ -33,6 +35,8 @@ export interface ValidationResult {
 
 /** Default organism card copy (role + observe) should stay under roughly this many words. */
 export const CARD_WORD_LIMIT = 45;
+/** Spotter facts are read aloud to pre-readers, so they stay very short. */
+export const SPOTTER_WORD_LIMIT = 22;
 
 /**
  * Structural checks always run. With `release: true`, every content record and
@@ -100,6 +104,21 @@ export function validateContent(c: ContentBundle, opts: { release?: boolean } = 
   }
 
   for (const r of c.foodResources) checkRecord('food resource', r);
+
+  checkUnique('findable', c.findables.map((f) => f.id));
+  for (const f of c.findables) {
+    checkRecord('findable', f);
+    if (!habitatIds.has(f.habitat)) errors.push(`findable ${f.id}: unknown habitat "${f.habitat}"`);
+    if (f.featured && !organismIds.has(f.id)) errors.push(`findable ${f.id}: featured but not a featured organism`);
+    if (!narrationIds.has(`spotter-${f.id}`)) errors.push(`findable ${f.id}: missing narration "spotter-${f.id}"`);
+    if (!narrationIds.has(`find-${f.id}`)) errors.push(`findable ${f.id}: missing narration "find-${f.id}"`);
+    for (const a of f.assets) if (!assetIds.has(a)) errors.push(`findable ${f.id}: asset "${a}" not in asset register`);
+    const words = f.line.split(/\s+/).filter(Boolean).length;
+    if (words > SPOTTER_WORD_LIMIT) errors.push(`findable ${f.id}: fact is ${words} words (limit ${SPOTTER_WORD_LIMIT})`);
+  }
+  for (const o of c.organisms) {
+    if (!c.findables.some((f) => f.id === o.id)) errors.push(`organism ${o.id}: not in the findables list`);
+  }
 
   const isFood = (id: string) => organismIds.has(id) || resourceIds.has(id);
   for (const r of c.foodRelationships) {

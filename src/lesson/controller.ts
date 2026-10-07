@@ -4,10 +4,11 @@
  * the static presentation and a later VR release.
  */
 import { connectItems, exitQuestions, shelterPrediction, stepIds } from '../content/lesson.ts';
-import { organisms } from '../content/organisms.ts';
+import { findableById } from '../content/findables.ts';
+import { organismById, organisms } from '../content/organisms.ts';
 import type { FoodChoiceItem, HabitatId, StepId } from '../content/types.ts';
 
-export type Mode = 'lesson' | 'explore';
+export type Mode = 'lesson' | 'explore' | 'find';
 export type ActivityStatus = 'completed' | 'attempted' | 'skipped';
 
 export interface ChoiceState {
@@ -33,6 +34,16 @@ export interface LessonState {
   choices: Record<string, ChoiceState>;
   shelter: { selected: string | null; recorded: boolean; view: 'before' | 'after'; comparedAfter: boolean };
   protect: { choice: string | null; score: number | null; discussed: boolean };
+  /** "Can you find…?" game: targets in play order, the current one, and what was found. */
+  find: FindState;
+}
+
+export interface FindState {
+  order: string[];
+  index: number;
+  found: string[];
+  /** The most recent tap: the right animal, or a different one (which still says hello). */
+  lastTap: { id: string; correct: boolean } | null;
 }
 
 export type Action =
@@ -56,7 +67,10 @@ export type Action =
   | { type: 'setShelterView'; view: 'before' | 'after' }
   | { type: 'chooseProtect'; choice: string }
   | { type: 'scoreProtect'; score: number | null }
-  | { type: 'markProtectDiscussed' };
+  | { type: 'markProtectDiscussed' }
+  | { type: 'startFind'; order: string[] }
+  | { type: 'findTap'; id: string }
+  | { type: 'findNext' };
 
 export const FEATURED_COUNT = organisms.length;
 
@@ -76,6 +90,7 @@ export function initialState(): LessonState {
     choices: {},
     shelter: { selected: null, recorded: false, view: 'before', comparedAfter: false },
     protect: { choice: null, score: null, discussed: false },
+    find: { order: [], index: 0, found: [], lastTap: null },
   };
 }
 
@@ -128,6 +143,34 @@ export function reduce(state: LessonState, action: Action): LessonState {
       return action.mode === 'lesson'
         ? { ...initialState(), mode: 'lesson', visitedStops: ['reef'] }
         : { ...initialState(), mode: 'explore', visitedStops: ['reef'] };
+    case 'startFind': {
+      const order = action.order.filter((id) => findableById.has(id));
+      const first = findableById.get(order[0] ?? '');
+      return {
+        ...initialState(),
+        mode: 'find',
+        stop: first?.habitat ?? 'reef',
+        visitedStops: [first?.habitat ?? 'reef'],
+        find: { order, index: 0, found: [], lastTap: null },
+      };
+    }
+    case 'findTap': {
+      if (state.mode !== 'find' || !findableById.has(action.id)) return state;
+      const target = currentFindTarget(state);
+      const f = state.find;
+      if (target === null || f.found.includes(target)) return { ...state, find: { ...f, lastTap: { id: action.id, correct: false } } };
+      if (action.id === target) {
+        return { ...state, selectedOrganism: action.id, find: { ...f, found: [...f.found, target], lastTap: { id: action.id, correct: true } } };
+      }
+      return { ...state, selectedOrganism: null, find: { ...f, lastTap: { id: action.id, correct: false } } };
+    }
+    case 'findNext': {
+      if (state.mode !== 'find') return state;
+      const index = Math.min(state.find.index + 1, state.find.order.length);
+      const next = findableById.get(state.find.order[index] ?? '');
+      const moved = next ? withStop(state, next.habitat) : { ...state, selectedOrganism: null };
+      return { ...moved, find: { ...state.find, index, lastTap: null } };
+    }
     case 'exit':
       return { ...state, mode: null, selectedOrganism: null };
     case 'restart':
@@ -232,7 +275,7 @@ export function activitySummary(state: LessonState): ActivitySummary[] {
         ? 'attempted'
         : 'skipped';
   const exploreStatus: ActivityStatus =
-    state.discovered.length >= FEATURED_COUNT ? 'completed' : state.discovered.length > 0 ? 'attempted' : 'skipped';
+    featuredDiscovered(state) >= FEATURED_COUNT ? 'completed' : featuredDiscovered(state) > 0 ? 'attempted' : 'skipped';
 
   return [
     {
@@ -240,7 +283,7 @@ export function activitySummary(state: LessonState): ActivitySummary[] {
       label: 'Briefing: first idea',
       status: state.baselineShared || state.baselineNote.trim() ? 'completed' : 'skipped',
     },
-    { id: 'explore', label: `Explore: ${state.discovered.length} of ${FEATURED_COUNT} organisms observed`, status: exploreStatus },
+    { id: 'explore', label: `Explore: ${featuredDiscovered(state)} of ${FEATURED_COUNT} organisms observed`, status: exploreStatus },
     ...connectItems.map((item, i) => ({
       id: item.id,
       label: `Connect: food relationship ${i + 1}`,
@@ -253,6 +296,16 @@ export function activitySummary(state: LessonState): ActivitySummary[] {
       status: q.kind === 'food-choice' ? choiceStatus(state, q.item.id) : q.kind === 'shelter-reasoning' ? choiceStatus(state, q.id) : protectStatus,
     })),
   ];
+}
+
+/** Only the five featured organisms count toward Explore; spotters are bonus discoveries. */
+export function featuredDiscovered(state: LessonState): number {
+  return state.discovered.filter((id) => organismById.has(id)).length;
+}
+
+/** The animal the class is looking for now, or null when the game is over. */
+export function currentFindTarget(state: LessonState): string | null {
+  return state.find.order[state.find.index] ?? null;
 }
 
 export function stepIndex(step: StepId): number {
@@ -273,6 +326,7 @@ export function hydrate(raw: unknown): LessonState {
     ...r,
     shelter: { ...base.shelter, ...(r.shelter ?? {}) },
     protect: { ...base.protect, ...(r.protect ?? {}) },
+    find: { ...base.find, ...(r.find ?? {}), lastTap: null },
     choices: { ...(r.choices ?? {}) },
     selectedOrganism: null,
   };

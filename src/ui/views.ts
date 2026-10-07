@@ -2,6 +2,7 @@
  * View templates for the lesson dock, organism card and recap. Each returns an
  * HTML string; buttons carry data-action attributes handled by the app.
  */
+import { findableById, findables, findablesAt } from '../content/findables.ts';
 import { foodRelationshipById, foodRelationships, foodResourceById, shelterRelationships } from '../content/food.ts';
 import { habitatById, habitats } from '../content/habitats.ts';
 import {
@@ -19,7 +20,7 @@ import {
 import { isVerified, organismById, organisms } from '../content/organisms.ts';
 import { sourceById } from '../content/sources.ts';
 import type { FoodChoiceItem, HabitatId, VideoSegment } from '../content/types.ts';
-import { activitySummary, choice, FEATURED_COUNT, predictionLabel, SHELTER_EXIT_ID, stepIndex, type LessonState } from '../lesson/controller.ts';
+import { activitySummary, choice, currentFindTarget, FEATURED_COUNT, featuredDiscovered, predictionLabel, SHELTER_EXIT_ID, stepIndex, type LessonState } from '../lesson/controller.ts';
 import { btn, esc, foodArrow, shelterLink } from './html.ts';
 
 export function nameOf(id: string): string {
@@ -63,6 +64,24 @@ function organismList(state: LessonState, stop: HabitatId) {
   </div>`;
 }
 
+/** Bonus animals at this stop: tappable in the scene, and here for keyboard users. */
+function spotterList(state: LessonState, stop: HabitatId) {
+  const here = findablesAt(stop).filter((f) => !f.featured);
+  if (!here.length) return '';
+  return `<p class="eyebrow">More to discover here</p>
+    <div class="organism-list spotter-list" role="group" aria-label="More animals at this stop">
+      ${here
+        .map((f) =>
+          btn(state.discovered.includes(f.id) ? `${f.title} ✓` : f.title, 'select', {
+            arg: f.id,
+            cls: `organism-btn spotter-btn${state.selectedOrganism === f.id ? ' is-selected' : ''}`,
+            pressed: state.selectedOrganism === f.id,
+          }),
+        )
+        .join('')}
+    </div>`;
+}
+
 function exploreBody(state: LessonState) {
   const h = habitatById.get(state.stop)!;
   return `${stopNav(state)}
@@ -71,7 +90,8 @@ function exploreBody(state: LessonState) {
       <p>${esc(h.focus)}</p>
     </div>
     ${organismList(state, state.stop)}
-    <p class="progress-note" role="status">Observed ${state.discovered.length} of ${FEATURED_COUNT} featured organisms.</p>`;
+    ${spotterList(state, state.stop)}
+    <p class="progress-note" role="status">Observed ${featuredDiscovered(state)} of ${FEATURED_COUNT} featured organisms.</p>`;
 }
 
 function videoButton(ctx: ViewContext, step: string) {
@@ -326,15 +346,82 @@ export function renderExploreDock(state: LessonState) {
       ${exploreBody(state)}
     </div>
     <div class="lesson-nav">
+      ${btn('Can you find…?', 'find', { cls: 'secondary', icon: '🔍' })}
       ${btn('Start guided lesson', 'start', { arg: 'lesson', cls: 'primary', icon: '→' })}
     </div>`;
+}
+
+// ── "Can you find…?" game ──────────────────────────────────────────────────
+
+const REAL_OCEAN = 'In the real ocean, we look at animals, but we never touch them.';
+
+export function renderFindDock(state: LessonState) {
+  const f = state.find;
+  const targetId = currentFindTarget(state);
+  const total = f.order.length;
+  const dots = `<div class="find-dots" role="img" aria-label="Found ${f.found.length} of ${total}">
+      ${f.order.map((id, i) => `<span class="dot${f.found.includes(id) ? ' is-found' : i === f.index ? ' is-current' : i < f.index ? ' is-skipped' : ''}"></span>`).join('')}
+    </div>`;
+  if (!targetId) {
+    return `<div class="dock-body find">
+        <h2 class="instruction" tabindex="-1" data-key="instruction">${f.found.length ? `You found ${f.found.length} animal${f.found.length === 1 ? '' : 's'}!` : 'That’s every animal!'}</h2>
+        ${dots}
+        <p class="lead">Amazing exploring!</p>
+        <p class="notice">${esc(REAL_OCEAN)}</p>
+      </div>
+      <div class="lesson-nav">
+        ${btn('Explore', 'start', { arg: 'explore', cls: 'secondary' })}
+        ${btn('Play again', 'find', { cls: 'primary', icon: '↻' })}
+      </div>`;
+  }
+  const target = findableById.get(targetId)!;
+  const found = f.found.includes(targetId);
+  const tapped = f.lastTap && !f.lastTap.correct ? findableById.get(f.lastTap.id) : undefined;
+  const body = found
+    ? `<p class="find-line" role="status">${esc(target.line)}</p>`
+    : `${tapped ? `<p class="feedback retry find-feedback" role="status">That’s the <strong>${esc(tapped.title.toLowerCase())}</strong>! Keep looking for the ${esc(target.name)}.</p>` : '<p class="muted">Come up and tap it on the screen.</p>'}
+       <div class="row">
+         ${btn('Hear it again', 'find-again', { cls: 'secondary', icon: '🔊' })}
+         ${btn('Hint', 'find-hint', { cls: 'secondary', icon: '✨' })}
+       </div>`;
+  return `<div class="dock-body find">
+      <p class="eyebrow">Can you find…? · ${f.found.length} of ${total} found</p>
+      <h2 class="instruction find-prompt" tabindex="-1" data-key="instruction">${found ? `You found the ${esc(target.name)}!` : `Can you find the ${esc(target.name)}?`}</h2>
+      ${body}
+      ${dots}
+      <details class="find-list" data-key="find-list">
+        <summary>Choose from a list</summary>
+        <div class="organism-list">${findablesAt(state.stop)
+          .map((x) => btn(x.title, 'find-pick', { arg: x.id, cls: 'organism-btn' }))
+          .join('')}</div>
+      </details>
+      <p class="small muted">${esc(REAL_OCEAN)}</p>
+    </div>
+    <div class="lesson-nav">
+      ${found ? '' : btn('Skip this animal', 'find-next', { cls: 'secondary', key: 'find-skip' })}
+      ${found ? btn(f.index + 1 < total ? 'Next animal' : 'Finish', 'find-next', { cls: 'primary big', icon: '→', key: 'find-next' }) : ''}
+    </div>`;
+}
+
+/** Play order: one stop at a time (reef, seagrass, sand), shuffled within each stop. */
+export function findOrder(random: () => number = Math.random): string[] {
+  const order: string[] = [];
+  for (const stop of ['reef', 'seagrass', 'sand'] as HabitatId[]) {
+    const ids = findables.filter((x) => x.habitat === stop).map((x) => x.id);
+    for (let i = ids.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    order.push(...ids);
+  }
+  return order;
 }
 
 // ── Organism card ────────────────────────────────────────────────────────────
 
 export function renderCard(id: string) {
   const o = organismById.get(id);
-  if (!o) return '';
+  if (!o) return renderSpotterCard(id);
   const habitat = habitatById.get(o.habitat)!;
   const eats = foodRelationships.filter((r) => r.consumer === id);
   const eatenBy = foodRelationships.filter((r) => r.food === id);
@@ -364,5 +451,26 @@ export function renderCard(id: string) {
     <div class="row">
       ${btn('Listen', 'listen', { arg: id, cls: 'secondary', icon: '🔊' })}
       ${btn('Return to lesson', 'return', { cls: 'secondary' })}
+    </div>`;
+}
+
+/** A short card for the bonus animals: name, one read-aloud fact, sources. */
+function renderSpotterCard(id: string) {
+  const f = findableById.get(id);
+  if (!f) return '';
+  const sources = f.sources.map((s) => sourceById.get(s)).filter((s) => !!s);
+  return `<div class="card-head">
+      <div>
+        <p class="eyebrow">${esc(habitatById.get(f.habitat)!.title)}</p>
+        <h2 id="card-title" tabindex="-1" data-key="card-title">${esc(f.title)}</h2>
+      </div>
+      ${btn('Close', 'close-card', { cls: 'icon-btn', aria: 'Close card', icon: '✕' })}
+    </div>
+    <p class="find-line">${esc(f.line)}</p>
+    <p class="small muted">Selecting an animal here is for observing. In real life, we watch wildlife without touching it.</p>
+    <p class="small muted">Sources: ${sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.publisher)}</a>`).join(', ')}</p>
+    <div class="row">
+      ${btn('Listen', 'listen', { arg: id, cls: 'secondary', icon: '🔊' })}
+      ${btn('Return', 'return', { cls: 'secondary' })}
     </div>`;
 }

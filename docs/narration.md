@@ -1,6 +1,6 @@
 # Narration in your own voice
 
-The lesson has 14 narration lines, about 3½ minutes of speaking in all. Each line you record replaces the browser voice for that line. Any line you haven't recorded keeps using the browser voice, so you can record a few at a time.
+The lesson's 14 original narration lines (about 3½ minutes) are recorded. The 20 tappable animals and the “Can you find…?” game added 44 more short lines, listed under *New lines to record*. Each line you record replaces the browser voice for that line. Any line you haven't recorded keeps using the browser voice, so you can record a few at a time.
 
 ## Recording
 
@@ -15,7 +15,7 @@ Tips:
 - Read at classroom pace, a little slower than normal conversation.
 - **Read the words exactly as written.** The captions show this text while your voice plays. If you'd rather say something differently, note your wording and the captions will be updated to match.
 
-## The script
+## The original script (recorded)
 
 ### Lesson steps
 
@@ -45,6 +45,65 @@ Tips:
 | Great barracuda | `organism-great-barracuda.mp3` | Great barracuda. The great barracuda is a predator. It hunts by sight and eats mostly other fish. Look at its long body. How might that shape help it move quickly? |
 | Green sea turtle | `organism-green-sea-turtle.mp3` | Green sea turtle. Adult green sea turtles eat mostly seagrass and algae. Seagrass meadows are places where they feed. Where does the turtle spend its time? Why might it stay near the seagrass? |
 | Queen conch | `organism-queen-conch.mp3` | Queen conch. The queen conch is a large sea snail. It moves slowly along the seafloor, grazing on algae. Look closely at the edge of the sand. What helps the conch blend in? |
+
+## New lines to record (44 lines, about 3 minutes)
+
+These go with the 20 tappable animals and the "Can you find…?" game. Until they're recorded, the browser voice reads them. Short lines like the game prompts work best with a bright, encouraging tone.
+
+### Animal facts (heard when a child taps an animal)
+
+| Line | File | Words to read |
+|---|---|---|
+| Elkhorn coral | `spotter-elkhorn-coral.mp3` | Elkhorn coral! Its wide branches look like antlers, and little fish hide between them. |
+| Stoplight parrotfish | `spotter-stoplight-parrotfish.mp3` | A stoplight parrotfish! It scrapes algae off rocks with its beak-like teeth. |
+| Great barracuda | `spotter-great-barracuda.mp3` | A great barracuda! It is a long, fast hunter that eats other fish. |
+| Brain coral | `spotter-brain-coral.mp3` | Brain coral! Its wiggly grooves look like a brain. It is an animal, and it helps build the reef. |
+| Sea fan | `spotter-sea-fan.mp3` | A sea fan! It holds its branches out like a net to catch tiny bits of food floating by. |
+| Tube sponge | `spotter-tube-sponge.mp3` | A sponge! Sponges are animals full of tiny holes. Water flows through them and brings them food. |
+| Nurse shark | `spotter-nurse-shark.mp3` | A nurse shark! It likes to rest on the sea floor during the day and look for food at night. |
+| Spiny lobster | `spotter-spiny-lobster.mp3` | A spiny lobster! It hides in holes in the reef. It has long, spiny feelers but no big claws. |
+| Long-spined sea urchin | `spotter-sea-urchin.mp3` | A sea urchin! It is covered in long, pointy spines, and it eats algae off the reef. |
+| Green moray eel | `spotter-green-moray.mp3` | A green moray eel! It peeks out of a rocky hole and opens and closes its mouth to breathe. |
+| Caribbean reef octopus | `spotter-reef-octopus.mp3` | An octopus! It can change its color to match the things around it. Watch! |
+| Blue tang | `spotter-blue-tang.mp3` | Blue tangs! These bright blue fish swim in little groups and nibble algae. |
+| Sergeant major | `spotter-sergeant-major.mp3` | Sergeant major fish! Their black stripes look like the stripes on a soldier’s uniform. |
+| Green sea turtle | `spotter-green-sea-turtle.mp3` | A green sea turtle! Grown-up green turtles munch on seagrass. |
+| Spotted eagle ray | `spotter-eagle-ray.mp3` | A spotted eagle ray! It flaps its big fins like wings, so it looks like it is flying through the water. |
+| Cushion sea star | `spotter-cushion-star.mp3` | A cushion sea star! It has five short, thick arms and lives on sand and seagrass. |
+| Sea cucumber | `spotter-sea-cucumber.mp3` | A sea cucumber! It crawls slowly along the sea floor, eating sand and cleaning it as it goes. |
+| Queen conch | `spotter-queen-conch.mp3` | A queen conch! It is a big sea snail with a pink shell inside, and it eats algae. |
+| Southern stingray | `spotter-southern-stingray.mp3` | A southern stingray! It can hide under the sand with just its eyes peeking out. |
+| Hermit crab | `spotter-hermit-crab.mp3` | A hermit crab! It lives in an empty shell and moves into a bigger one as it grows. |
+
+### Can you find…? game
+
+| Line | File | Words to read |
+|---|---|---|
+| Game introduction | `find-intro.mp3` | Let’s play Can You Find! Listen for an ocean animal. Then come up and tap it. |
+| Prompt: Elkhorn coral | `find-elkhorn-coral.mp3` | Can you find the elkhorn coral? |
+| Prompt: Stoplight parrotfish | `find-stoplight-parrotfish.mp3` | Can you find the parrotfish? |
+| Prompt: Great barracuda | `find-great-barracuda.mp3` | Can you find the barracuda? |
+| Prompt: Brain coral | `find-brain-coral.mp3` | Can you find the brain coral? |
+| Prompt: Sea fan | `find-sea-fan.mp3` | Can you find the sea fan? |
+| Prompt: Tube sponge | `find-tube-sponge.mp3` | Can you find the sponge? |
+| Prompt: Nurse shark | `find-nurse-shark.mp3` | Can you find the nurse shark? |
+| Prompt: Spiny lobster | `find-spiny-lobster.mp3` | Can you find the spiny lobster? |
+| Prompt: Long-spined sea urchin | `find-sea-urchin.mp3` | Can you find the sea urchin? |
+| Prompt: Green moray eel | `find-green-moray.mp3` | Can you find the moray eel? |
+| Prompt: Caribbean reef octopus | `find-reef-octopus.mp3` | Can you find the octopus? |
+| Prompt: Blue tang | `find-blue-tang.mp3` | Can you find the blue tangs? |
+| Prompt: Sergeant major | `find-sergeant-major.mp3` | Can you find the sergeant major fish? |
+| Prompt: Green sea turtle | `find-green-sea-turtle.mp3` | Can you find the sea turtle? |
+| Prompt: Spotted eagle ray | `find-eagle-ray.mp3` | Can you find the eagle ray? |
+| Prompt: Cushion sea star | `find-cushion-star.mp3` | Can you find the sea star? |
+| Prompt: Sea cucumber | `find-sea-cucumber.mp3` | Can you find the sea cucumber? |
+| Prompt: Queen conch | `find-queen-conch.mp3` | Can you find the queen conch? |
+| Prompt: Southern stingray | `find-southern-stingray.mp3` | Can you find the stingray? |
+| Prompt: Hermit crab | `find-hermit-crab.mp3` | Can you find the hermit crab? |
+| When a child finds the animal | `find-yes.mp3` | You found it! |
+| End of the game | `find-done.mp3` | You found every animal! Amazing exploring! |
+| Reminder at the end | `find-remember.mp3` | Remember, in the real ocean we look at animals, but we never touch them. |
+
 
 ## Adding recordings to the lesson
 

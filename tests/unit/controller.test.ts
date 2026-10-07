@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { connectItems, exitQuestions, stepIds } from '../../src/content/lesson.ts';
 import { organisms } from '../../src/content/organisms.ts';
-import { activitySummary, choice, hydrate, initialState, reduce, type Action, type LessonState } from '../../src/lesson/controller.ts';
+import { activitySummary, choice, currentFindTarget, hydrate, initialState, reduce, type Action, type LessonState } from '../../src/lesson/controller.ts';
 
 const run = (actions: Action[], from: LessonState = initialState()) => actions.reduce(reduce, from);
 const lesson = () => run([{ type: 'start', mode: 'lesson' }]);
@@ -180,5 +180,49 @@ describe('persistence', () => {
     expect(hydrate(null)).toEqual(initialState());
     expect(hydrate({ version: 0, step: 'explain' })).toEqual(initialState());
     expect(hydrate({ version: 1, step: 'nonsense', stop: 'moon' })).toMatchObject({ step: 'briefing', stop: 'reef' });
+  });
+});
+
+describe('"Can you find…?" game', () => {
+  const order = ['sea-urchin', 'brain-coral', 'cushion-star'];
+  const game = () => reduce(initialState(), { type: 'startFind', order });
+
+  it('starts at the stop of the first animal with nothing found', () => {
+    const s = game();
+    expect(s.mode).toBe('find');
+    expect(currentFindTarget(s)).toBe('sea-urchin');
+    expect(s.stop).toBe('reef');
+    expect(s.find.found).toEqual([]);
+  });
+
+  it('a different animal says hello but does not count; the right one is found and opens', () => {
+    let s = reduce(game(), { type: 'findTap', id: 'brain-coral' });
+    expect(s.find.lastTap).toEqual({ id: 'brain-coral', correct: false });
+    expect(s.find.found).toEqual([]);
+    expect(s.selectedOrganism).toBeNull();
+    s = reduce(s, { type: 'findTap', id: 'sea-urchin' });
+    expect(s.find.lastTap).toEqual({ id: 'sea-urchin', correct: true });
+    expect(s.find.found).toEqual(['sea-urchin']);
+    expect(s.selectedOrganism).toBe('sea-urchin');
+  });
+
+  it('moves to the next animal and its stop, and ends after the last', () => {
+    let s = run([{ type: 'findTap', id: 'sea-urchin' }, { type: 'findNext' }, { type: 'findNext' }], game());
+    expect(currentFindTarget(s)).toBe('cushion-star');
+    expect(s.stop).toBe('seagrass');
+    expect(s.find.found).toEqual(['sea-urchin']); // brain coral was skipped, not found
+    s = run([{ type: 'findTap', id: 'cushion-star' }, { type: 'findNext' }], s);
+    expect(currentFindTarget(s)).toBeNull();
+    expect(s.find.found).toHaveLength(2);
+  });
+
+  it('ignores unknown ids and taps outside the game', () => {
+    expect(reduce(game(), { type: 'findTap', id: 'kraken' }).find.lastTap).toBeNull();
+    expect(reduce(lesson(), { type: 'findTap', id: 'sea-urchin' }).find.found).toEqual([]);
+  });
+
+  it('spotters do not count toward the five featured organisms in Explore', () => {
+    const s = run([{ type: 'selectOrganism', id: 'sea-urchin' }, { type: 'selectOrganism', id: 'nurse-shark' }], lesson());
+    expect(status(s, 'explore')).toBe('skipped');
   });
 });

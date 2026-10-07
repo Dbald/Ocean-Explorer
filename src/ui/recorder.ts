@@ -3,6 +3,7 @@
  * order with Record, Play and Save controls, so the teacher can record the
  * whole script in one sitting. Nothing is uploaded: files are saved locally.
  */
+import { findables, findNarrationId, spotterNarrationId } from '../content/findables.ts';
 import { habitats } from '../content/habitats.ts';
 import { steps } from '../content/lesson.ts';
 import { narration } from '../content/narration.ts';
@@ -20,6 +21,17 @@ const groups: { title: string; ids: { id: string; label: string }[] }[] = [
   { title: 'Lesson steps', ids: steps.map((s, i) => ({ id: s.narrationId, label: `Step ${i + 1}: ${s.label}` })) },
   { title: 'Habitat stops', ids: habitats.map((h) => ({ id: h.narrationId, label: h.title })) },
   { title: 'Organism cards', ids: organisms.map((o) => ({ id: o.narrationId, label: o.commonName })) },
+  { title: 'Animal facts (heard when a child taps an animal)', ids: findables.map((f) => ({ id: spotterNarrationId(f.id), label: f.title })) },
+  {
+    title: 'Can you find…? game',
+    ids: [
+      { id: 'find-intro', label: 'Game introduction' },
+      ...findables.map((f) => ({ id: findNarrationId(f.id), label: `Prompt: ${f.title}` })),
+      { id: 'find-yes', label: 'When a child finds the animal' },
+      { id: 'find-done', label: 'End of the game' },
+      { id: 'find-remember', label: 'Reminder at the end' },
+    ],
+  },
 ];
 
 const textFor = new Map(narration.map((n) => [n.id, n.text]));
@@ -165,9 +177,9 @@ export class Recorder {
         <p class="small">Read the words exactly as written: the captions show this text while your voice plays. If you’d like to change the wording, note it and the captions can be updated to match.</p>
         ${this.error ? `<p class="notice" role="alert">${esc(this.error)}</p>` : ''}
         ${groups
-          .map(
-            (g) => `<section><h2>${esc(g.title)}</h2>
-            ${g.ids
+          .map((g) => {
+            const already = g.ids.filter((x) => recordedNarration.includes(x.id)).length;
+            const lines = g.ids
               .map(({ id, label }) => {
                 const take = this.takes.get(id);
                 const isRecording = this.recordingId === id;
@@ -187,9 +199,12 @@ export class Recorder {
                   </div>
                 </div>`;
               })
-              .join('')}
-          </section>`,
-          )
+              .join('');
+            // Sections already fully recorded fold away, so the new lines are easy to find.
+            return already === g.ids.length
+              ? `<details class="rec-done"><summary>${esc(g.title)} · all ${g.ids.length} already in the lesson ✓</summary>${lines}</details>`
+              : `<section><h2>${esc(g.title)} <span class="small muted">· ${g.ids.length - already} to record</span></h2>${lines}</section>`;
+          })
           .join('')}
       </article>`;
     if (focusKey) this.root.querySelector<HTMLElement>(`[data-key="${CSS.escape(focusKey)}"]`)?.focus();

@@ -6,17 +6,18 @@ import { Ambience, Narrator, type NarrationState } from './audio/narrator.ts';
 import { foodRelationshipById } from './content/food.ts';
 import { habitatById } from './content/habitats.ts';
 import { COMPOSITE_NOTICE, GUIDING_QUESTION, LESSON_TITLE, OBJECTIVE, PRODUCT_NAME, connectItems, exitQuestions, stepById, steps, videoSegments } from './content/lesson.ts';
+import { findNarrationId, spotterNarrationId } from './content/findables.ts';
 import { narrationById } from './content/narration.ts';
 import { recordedAudioFor } from './content/recordings.ts';
 import { organismById, organisms } from './content/organisms.ts';
 import type { HabitatId, StepId, VideoSegment } from './content/types.ts';
-import { initialState, reduce, type Action, type LessonState, type Mode } from './lesson/controller.ts';
+import { currentFindTarget, initialState, reduce, type Action, type LessonState, type Mode } from './lesson/controller.ts';
 import { clearAll, loadPreferences, loadSession, savePreferences, saveSession, type Preferences } from './lesson/store.ts';
 import { ReefScene, webglAvailable, type Viewpoint } from './scene/ReefScene.ts';
 import { StaticScene } from './scene/StaticScene.ts';
 import { renderGuide, renderTranscript, SHORTCUTS } from './ui/guide.ts';
 import { btn, esc } from './ui/html.ts';
-import { renderCard, renderExploreDock, renderLessonDock } from './ui/views.ts';
+import { findOrder, renderCard, renderExploreDock, renderFindDock, renderLessonDock } from './ui/views.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -40,6 +41,10 @@ export class App {
   private ambience = new Ambience();
   private caption: string | null = null;
   private narrationState: NarrationState = 'idle';
+  /** Clips to play back to back (e.g. "You found it!" then the animal's fact). */
+  private narrationQueue: string[] = [];
+  /** Animal pointed out by the game's Hint button in the illustrations view. */
+  private staticHint: string | null = null;
   private videos: VideoSegment[] = [];
   private returnFocus: HTMLElement | null = null;
   private perfTimer = 0;
@@ -61,6 +66,10 @@ export class App {
       onState: (s) => {
         this.narrationState = s;
         this.renderCaptions();
+        if (s === 'idle' && this.narrationQueue.length) {
+          const next = this.narrationQueue.shift()!;
+          window.setTimeout(() => this.playNarration(next), 250);
+        }
       },
     }, recordedAudioFor);
   }
@@ -85,7 +94,7 @@ export class App {
 
   /** The recording page loads on demand, so it adds nothing to the lesson's own load. */
   private async openRecorder() {
-    this.narrator.skip();
+    this.stopNarration();
     if (!this.recorder) {
       const { Recorder } = await import('./ui/recorder.ts');
       this.recorder = new Recorder($('recorder'), () => {
@@ -117,16 +126,83 @@ export class App {
     if (s.mode === 'lesson' && stepChanged) this.narrate(stepById.get(s.step)!.narrationId);
     else if (s.mode === 'explore' && action.type === 'start') this.narrate(habitatById.get(s.stop)!.narrationId);
     if (action.type === 'visitStop' && prev.stop !== s.stop) this.narrate(habitatById.get(s.stop)!.narrationId);
-    if (action.type === 'selectOrganism' && action.id) this.narrate(organismById.get(action.id)!.narrationId);
+    if (action.type === 'selectOrganism' && action.id) {
+      this.narrate(organismById.get(action.id)?.narrationId ?? spotterNarrationId(action.id));
+    }
 
     if (stepChanged && s.mode !== null) this.focusKey('instruction');
     if (action.type === 'selectOrganism' && action.id) this.focusKey('card-title');
   }
 
   private narrate(id: string, force = false) {
+    this.narrateSequence([id], force);
+  }
+
+  /** Plays narration clips one after another; any new narration replaces the queue. */
+  private narrateSequence(ids: string[], force = false) {
     if (!force && (!this.prefs.autoNarrate || this.paused)) return;
+    const [first, ...rest] = ids;
+    this.narrationQueue = rest;
+    if (first) this.playNarration(first);
+  }
+
+  private playNarration(id: string) {
     const seg = narrationById.get(id);
     if (seg) this.narrator.play(seg.id, seg.text);
+  }
+
+  private stopNarration() {
+    this.narrationQueue = [];
+    this.narrator.skip();
+  }
+
+  /** A tap on an animal in the scene: it always says hello; in the game it is also a guess. */
+  private onTap(id: string) {
+    this.scene3d?.react(id);
+    if (this.state.mode === 'find') return this.findTap(id);
+    this.returnFocus = null;
+    this.dispatch({ type: 'selectOrganism', id });
+  }
+
+  // ── "Can you find…?" ───────────────────────────────────────────────────────
+
+  private startFind() {
+    this.paused = false;
+    this.resumable = null;
+    this.startAudio();
+    this.dispatch({ type: 'startFind', order: findOrder() });
+    const first = currentFindTarget(this.state);
+    this.narrateSequence(['find-intro', ...(first ? [findNarrationId(first)] : [])]);
+  }
+
+  private findTap(id: string) {
+    this.dispatch({ type: 'findTap', id });
+    const tap = this.state.find.lastTap;
+    if (tap?.correct) this.narrateSequence(['find-yes', spotterNarrationId(id)]);
+    else this.narrate(spotterNarrationId(id));
+  }
+
+  private findNext() {
+    this.scene3d?.hint(null);
+    this.staticHint = null;
+    this.dispatch({ type: 'findNext' });
+    const next = currentFindTarget(this.state);
+    if (next) this.narrate(findNarrationId(next));
+    else this.narrateSequence(['find-done', 'find-remember']);
+  }
+
+  private findHint() {
+    const target = currentFindTarget(this.state);
+    if (!target) return;
+    this.scene3d?.hint(target);
+    this.staticHint = target;
+    this.syncScene();
+    window.setTimeout(() => {
+      if (this.staticHint === target) {
+        this.staticHint = null;
+        this.syncScene();
+      }
+    }, 3300);
   }
 
   private startAudio() {
@@ -161,7 +237,7 @@ export class App {
         quality: this.prefs.quality,
         ambientMotion: this.prefs.ambientMotion && !this.paused,
         instantCamera: this.prefs.instantCamera,
-        onSelect: (id) => this.dispatch({ type: 'selectOrganism', id }),
+        onSelect: (id) => this.onTap(id),
         onProgress: (f, label) => {
           $('loading-label').textContent = label;
           $('loading-bar').style.width = `${Math.round(f * 100)}%`;
@@ -186,7 +262,7 @@ export class App {
 
   private useStatic() {
     $('loading').hidden = true;
-    this.staticScene = new StaticScene($('stage'), (id) => this.dispatch({ type: 'selectOrganism', id }));
+    this.staticScene = new StaticScene($('stage'), (id) => this.onTap(id));
     this.syncScene();
   }
 
@@ -204,10 +280,7 @@ export class App {
     scene.canvas.addEventListener('pointerup', (e) => {
       if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) return;
       const id = scene.pick(e.clientX, e.clientY);
-      if (id) {
-        this.returnFocus = null;
-        this.dispatch({ type: 'selectOrganism', id });
-      }
+      if (id) this.onTap(id);
     });
     scene.canvas.addEventListener('pointermove', (e) => {
       if (e.pointerType === 'mouse') scene.setHover(scene.pick(e.clientX, e.clientY));
@@ -219,7 +292,7 @@ export class App {
   private sceneTarget(): SceneTarget {
     const s = this.state;
     const at = (stop: HabitatId): SceneTarget => ({ view: stop, stop, shelter: null });
-    if (s.mode === 'explore') return at(s.stop);
+    if (s.mode === 'explore' || s.mode === 'find') return at(s.stop);
     if (s.mode !== 'lesson') return at('reef');
     switch (s.step) {
       case 'explore':
@@ -255,7 +328,13 @@ export class App {
       this.scene3d.setShelterView(t.shelter);
       this.scene3d.setSelected(this.state.selectedOrganism);
     }
-    this.staticScene?.render({ stop: t.stop, selected: this.state.selectedOrganism, shelterView: t.shelter });
+    this.staticScene?.render({
+      stop: t.stop,
+      selected: this.state.selectedOrganism,
+      shelterView: t.shelter,
+      labels: this.state.mode !== 'find',
+      hint: this.staticHint,
+    });
     $('stage').setAttribute('data-stop', t.stop);
   }
 
@@ -294,6 +373,8 @@ export class App {
       parts.push(btn('Return to lesson', 'return', { cls: 'top-btn', icon: '↩' }));
     } else if (s.mode === 'explore') {
       parts.push('<span class="step-indicator">Explore mode</span>');
+    } else if (s.mode === 'find') {
+      parts.push('<span class="step-indicator">Can you find…?</span>');
     }
     if (s.mode !== null) parts.push(btn('Home', 'home', { cls: 'top-btn', icon: '⌂' }));
     parts.push(btn('Teacher guide', 'guide', { cls: 'top-btn', icon: '📘' }));
@@ -310,7 +391,13 @@ export class App {
     entry.hidden = this.state.mode !== null;
     if (entry.hidden) return;
     const r = this.resumable;
-    const resumeLabel = r ? (r.mode === 'lesson' ? `Resume lesson (step ${steps.findIndex((x) => x.id === r.step) + 1}: ${stepById.get(r.step)!.label})` : 'Resume exploring') : '';
+    const resumeLabel = !r
+      ? ''
+      : r.mode === 'lesson'
+        ? `Resume lesson (step ${steps.findIndex((x) => x.id === r.step) + 1}: ${stepById.get(r.step)!.label})`
+        : r.mode === 'find'
+          ? 'Resume Can you find…?'
+          : 'Resume exploring';
     const draft = organisms.some((o) => o.review.status !== 'reviewed');
     this.patch(
       entry,
@@ -322,6 +409,7 @@ export class App {
         <div class="row entry-actions">
           ${btn('Start lesson', 'start', { arg: 'lesson', cls: 'primary big', key: 'entry-start', icon: '▶' })}
           ${btn('Explore', 'start', { arg: 'explore', cls: 'secondary big', key: 'entry-explore' })}
+          ${btn('Can you find…?', 'find', { cls: 'secondary big', key: 'entry-find', icon: '🔍' })}
           ${r ? btn(resumeLabel, 'resume', { cls: 'secondary big', key: 'entry-resume' }) : ''}
         </div>
         <p class="small muted">Sound starts only after you choose. Captions are on. About 10 minutes, teacher-led.</p>
@@ -353,14 +441,19 @@ export class App {
     const ctx = { videos: this.videos };
     dock.dataset.mode = this.state.mode ?? '';
     dock.dataset.step = this.state.step;
-    this.patch(dock, this.state.mode === 'lesson' ? renderLessonDock(this.state, ctx, this.paused) : renderExploreDock(this.state));
+    const mode = this.state.mode;
+    this.patch(
+      dock,
+      mode === 'lesson' ? renderLessonDock(this.state, ctx, this.paused) : mode === 'find' ? renderFindDock(this.state) : renderExploreDock(this.state),
+    );
     this.updateInsets();
   }
 
   private renderCardPanel() {
     const card = $('card');
     const id = this.state.selectedOrganism;
-    card.hidden = !id || this.state.mode === null;
+    // In the game, the dock celebrates the find, so no card covers it.
+    card.hidden = !id || this.state.mode === null || this.state.mode === 'find';
     if (!card.hidden && id) this.patch(card, renderCard(id));
   }
 
@@ -519,7 +612,7 @@ export class App {
   private openVideo(id: string) {
     const v = this.videos.find((x) => x.id === id);
     if (!v) return;
-    this.narrator.skip();
+    this.stopNarration();
     const panel = $('video-panel');
     panel.innerHTML = `<div class="dialog-head"><h2 class="h-small">${esc(v.title)}</h2>${btn('Close video', 'close-video', { cls: 'icon-btn', icon: '✕', aria: 'Close video' })}</div>
       <video controls autoplay playsinline preload="metadata" src="${esc(v.src)}">
@@ -648,14 +741,29 @@ export class App {
         return this.afterChange(prev, { type: 'goto', step: this.state.step });
       }
       case 'home':
-        this.narrator.skip();
+        this.stopNarration();
         this.resumable = this.state;
         return this.dispatch({ type: 'exit' });
       case 'stop':
         return this.dispatch({ type: 'visitStop', stop: a as HabitatId });
       case 'select':
         this.returnFocus = el;
+        this.scene3d?.react(a);
         return this.dispatch({ type: 'selectOrganism', id: a });
+      case 'find':
+        return this.startFind();
+      case 'find-pick':
+        this.scene3d?.react(a);
+        return this.findTap(a);
+      case 'find-next':
+        this.findNext();
+        return this.focusKey('instruction');
+      case 'find-again': {
+        const target = currentFindTarget(this.state);
+        return target ? this.narrate(findNarrationId(target), true) : undefined;
+      }
+      case 'find-hint':
+        return this.findHint();
       case 'close-card':
         return this.closeCard();
       case 'return':
@@ -663,7 +771,7 @@ export class App {
         this.dispatch({ type: 'selectOrganism', id: null });
         return this.focusKey('instruction');
       case 'listen':
-        return this.narrate(organismById.get(a)!.narrationId, true);
+        return this.narrate(organismById.get(a)?.narrationId ?? spotterNarrationId(a), true);
       case 'baseline-shared':
         return this.dispatch({ type: 'markBaselineShared' });
       case 'choose':
@@ -713,7 +821,7 @@ export class App {
           clearAll();
           this.prefs = loadPreferences(this.reducedMotion);
           this.resumable = null;
-          this.narrator.skip();
+          this.stopNarration();
           const prev = this.state;
           this.state = initialState();
           this.applyPrefs();
@@ -757,7 +865,7 @@ export class App {
         this.prefs[key] = !this.prefs[key];
         this.applyPrefs();
         if (key === 'captions') this.renderCaptions();
-        if (key === 'autoNarrate' && !this.prefs.autoNarrate) this.narrator.skip();
+        if (key === 'autoNarrate' && !this.prefs.autoNarrate) this.stopNarration();
         return this.refreshSettings();
       }
       case 'pref-choice': {
@@ -783,7 +891,7 @@ export class App {
         else this.narrator.replay();
         return;
       case 'narr-skip':
-        return this.narrator.skip();
+        return this.stopNarration();
       case 'narr-mute':
         this.muted = !this.muted;
         this.narrator.setMuted(this.muted);

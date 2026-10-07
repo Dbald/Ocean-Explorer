@@ -1,3 +1,4 @@
+import { FIND_LINES, findNarrationId, findables, spotterNarrationId } from './findables.ts';
 import { habitats } from './habitats.ts';
 import { organisms } from './organisms.ts';
 import { GUIDING_QUESTION } from './lesson.ts';
@@ -44,5 +45,23 @@ const organismNarration: NarrationSegment[] = organisms.map((o) => ({
   text: `${o.commonName}. ${o.role} ${o.observe}`,
 }));
 
-export const narration: NarrationSegment[] = [...stepNarration, ...habitatNarration, ...organismNarration];
+/** Short read-aloud facts for every tappable animal (used by spotter cards and the game). */
+const spotterNarration: NarrationSegment[] = findables.map((f) => ({ id: spotterNarrationId(f.id), text: f.line }));
+
+/** "Can you find…?" game prompts. */
+const findNarration: NarrationSegment[] = [
+  { id: 'find-intro', text: FIND_LINES.intro },
+  ...findables.map((f) => ({ id: findNarrationId(f.id), text: `Can you find the ${f.name}?` })),
+  { id: 'find-yes', text: FIND_LINES.yes },
+  { id: 'find-done', text: FIND_LINES.done },
+  { id: 'find-remember', text: FIND_LINES.remember },
+];
+
+export const narration: NarrationSegment[] = [
+  ...stepNarration,
+  ...habitatNarration,
+  ...organismNarration,
+  ...spotterNarration,
+  ...findNarration,
+];
 export const narrationById = new Map(narration.map((n) => [n.id, n]));

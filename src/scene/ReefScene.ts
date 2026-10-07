@@ -7,6 +7,21 @@ import * as THREE from 'three';
 import type { HabitatId } from '../content/types.ts';
 import { buildEnvironment, terrainHeight, type Environment } from './environment.ts';
 import { buildBarracuda, buildConch, buildElkhorn, buildParrotfish, buildSmallFish, buildTurtle, type CoralColony, type FishRig, type TurtleRig } from './organisms.ts';
+import {
+  buildBlueTangs,
+  buildCushionStar,
+  buildEagleRay,
+  buildGreenMoray,
+  buildHermitCrab,
+  buildNurseShark,
+  buildOctopus,
+  buildSeaCucumber,
+  buildSeaUrchin,
+  buildSergeantMajors,
+  buildSpinyLobster,
+  buildStingray,
+  type SpotterModel,
+} from './spotters.ts';
 import { disposeTree, sharedTime, tagOrganism } from './util.ts';
 
 /** The algae-covered side of the rock where the parrotfish grazes. */
@@ -57,8 +72,15 @@ export class ReefScene {
   private camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.05, 400);
   private clock = new THREE.Timer();
   private env!: Environment;
+  /** The main object for each tappable id (framing, ring); `instances` holds every copy (e.g. all sea fans). */
   private organisms = new Map<string, THREE.Object3D>();
+  private instances = new Map<string, THREE.Object3D[]>();
   private pickables: THREE.Object3D[] = [];
+  private spotterModels = new Map<string, SpotterModel>();
+  private eagleRay: SpotterModel | null = null;
+  /** Tap reactions in progress: elapsed seconds and total length. */
+  private reactions = new Map<string, { t: number; duration: number }>();
+  private hintId: string | null = null;
   private ring!: THREE.Mesh;
   private hoverId: string | null = null;
   private selectedId: string | null = null;
@@ -129,7 +151,12 @@ export class ReefScene {
 
     progress(0.2, 'Shaping the seafloor…');
     await nextFrame();
-    this.env = buildEnvironment([{ x: 4, z: 0.3, r: 1.1 }]);
+    // Keep seagrass clear around the turtle, sea star and sea cucumber so children can see them.
+    this.env = buildEnvironment([
+      { x: 4, z: 0.3, r: 1.1 },
+      { x: 2.85, z: 1.35, r: 0.45 },
+      { x: 5.3, z: 1.65, r: 0.45 },
+    ]);
     this.scene.add(this.env.root);
 
     progress(0.55, 'Growing the coral…');
@@ -150,10 +177,74 @@ export class ReefScene {
     obj.position.set(x, terrainHeight(x, z) + lift, z);
   }
 
-  private register(id: string, obj: THREE.Object3D) {
-    tagOrganism(obj, id);
+  private register(id: string, obj: THREE.Object3D, others: THREE.Object3D[] = []) {
+    const all = [obj, ...others];
+    all.forEach((o) => tagOrganism(o, id));
     this.organisms.set(id, obj);
-    this.pickables.push(obj);
+    this.instances.set(id, all);
+    this.pickables.push(...all);
+  }
+
+  /** An invisible, generous tap target so small animals are easy to hit with a finger. */
+  private addTapArea(holder: THREE.Object3D, radius: number, y = 0.1) {
+    const area = new THREE.Mesh(new THREE.SphereGeometry(radius, 10, 8), new THREE.MeshBasicMaterial({ visible: false }));
+    area.position.y = y;
+    holder.add(area);
+  }
+
+  private addSpotter(id: string, model: SpotterModel, x: number, z: number, opts: { lift?: number; yaw?: number; tap?: number; tapY?: number; free?: boolean } = {}) {
+    const holder = new THREE.Group();
+    holder.add(model.group);
+    if (opts.free) holder.position.set(x, opts.lift ?? 0, z);
+    else this.place(holder, x, z, opts.lift ?? 0);
+    holder.rotation.y = opts.yaw ?? 0;
+    this.addTapArea(holder, opts.tap ?? 0.3, opts.tapY ?? 0.1);
+    this.scene.add(holder);
+    this.spotterModels.set(id, model);
+    this.register(id, holder);
+    return holder;
+  }
+
+  private buildSpotters() {
+    // Reef: things that were already in the scene become tappable…
+    this.register('brain-coral', this.env.boulders[0], this.env.boulders.slice(1));
+    this.register('sea-fan', this.env.fans[0], this.env.fans.slice(1));
+    this.register('tube-sponge', this.env.sponges[0], this.env.sponges.slice(1));
+    // …plus new animals placed where the reef stop can see them.
+    this.addSpotter('nurse-shark', buildNurseShark(), -14.6, 2.3, { lift: 0.1, yaw: 0.25, tap: 0.6 });
+    this.addSpotter('spiny-lobster', buildSpinyLobster(), -13.35, 1.05, { lift: 0.04, yaw: -2.3, tap: 0.32 });
+    this.addSpotter('sea-urchin', buildSeaUrchin(), -16.35, 1.55, { tap: 0.3 });
+    this.addSpotter('green-moray', buildGreenMoray(), -11.95, -0.39, { tap: 0.3, tapY: 0.2 });
+    this.addSpotter('reef-octopus', buildOctopus(), -15.15, 0.65, { yaw: 0.6, tap: 0.33 });
+    this.addSpotter('blue-tang', buildBlueTangs(), -13.4, -1.0, { lift: 1.35, free: true, tap: 0.75, tapY: 0.05 });
+    this.addSpotter('sergeant-major', buildSergeantMajors(), -18.7, -0.2, { lift: 1.35, free: true, tap: 0.6, tapY: 0.05 });
+    // Seagrass meadow.
+    this.eagleRay = buildEagleRay();
+    this.addSpotter('eagle-ray', this.eagleRay, 4.9, -1.1, { lift: 1.35, free: true, tap: 1.1, tapY: 0 });
+    this.addSpotter('cushion-star', buildCushionStar(), 2.85, 1.35, { tap: 0.32 });
+    this.addSpotter('sea-cucumber', buildSeaCucumber(), 5.3, 1.65, { yaw: 0.4, tap: 0.32 });
+    // Sandy seabed.
+    this.addSpotter('southern-stingray', buildStingray('#d6c79c'), 18.6, -0.02, { yaw: 0.5, tap: 0.45, tapY: 0.03 });
+    const crab = buildHermitCrab();
+    crab.group.scale.setScalar(1.6);
+    this.addSpotter('hermit-crab', crab, 16.85, 1.55, { yaw: -0.6, tap: 0.25 });
+  }
+
+  /** Objects that bounce on tap. The coral thicket group spans the reef, so only its main colony bounces. */
+  private bouncers(id: string): THREE.Object3D[] {
+    return id === 'elkhorn-coral' ? [this.focusColony.group] : (this.instances.get(id) ?? []);
+  }
+
+  /** A short "hello" wiggle when tapped. */
+  react(id: string) {
+    this.reactions.set(id, { t: 0, duration: 1.1 });
+  }
+
+  /** Points out an animal for a few seconds: it wiggles and a ring appears around it. */
+  hint(id: string | null) {
+    this.hintId = id;
+    if (id) this.reactions.set(id, { t: 0, duration: 3.3 });
+    this.updateHighlights();
   }
 
   private buildOrganisms() {
@@ -230,6 +321,8 @@ export class ReefScene {
     this.ring.visible = false;
     this.scene.add(this.ring);
 
+    this.buildSpotters();
+
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       if (m.isMesh && o.userData.organismId) m.castShadow = true;
@@ -256,6 +349,9 @@ export class ReefScene {
         position: new THREE.Vector3(turtle.x + 0.9, turtle.y + 0.75, turtle.z + 1.7),
         target: new THREE.Vector3(turtle.x + 0.15, turtle.y + 0.05, turtle.z),
       },
+      'blue-tang': { position: new THREE.Vector3(-13.1, 1.75, 1.1), target: new THREE.Vector3(-13.4, 1.35, -1.0) },
+      'sergeant-major': { position: new THREE.Vector3(-18.4, 1.65, 1.5), target: new THREE.Vector3(-18.7, 1.35, -0.2) },
+      'eagle-ray': { position: new THREE.Vector3(5.1, 1.95, 1.9), target: new THREE.Vector3(4.9, 1.35, -1.1) },
       'queen-conch': {
         position: new THREE.Vector3(c.x + 0.2, c.y + 0.42, c.z + 0.85),
         target: new THREE.Vector3(c.x, c.y + 0.03, c.z),
@@ -278,7 +374,18 @@ export class ReefScene {
 
   private closeupFor(id: string): View | null {
     this.closeupViews ??= this.closeups();
-    return this.closeupViews[id] ?? null;
+    const known = this.closeupViews[id];
+    if (known) return known;
+    // Anything else: frame its main object from the front, a little above.
+    const obj = this.organisms.get(id);
+    if (!obj) return null;
+    const box = new THREE.Box3().setFromObject(obj);
+    const c = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const d = Math.max(0.9, Math.max(size.x, size.y, size.z) * 2.2);
+    const view = { position: new THREE.Vector3(c.x + d * 0.2, c.y + d * 0.4 + 0.1, c.z + d), target: c };
+    this.closeupViews[id] = view;
+    return view;
   }
 
   private moveCamera(to: View, instant: boolean) {
@@ -388,7 +495,7 @@ export class ReefScene {
 
   private updateHighlights() {
     const inCloseup = !!this.selectedId && !!this.closeupFor(this.selectedId);
-    for (const [id, obj] of this.organisms) {
+    for (const [id, list] of this.instances) for (const obj of list) {
       // In a close-up the framing already shows what's selected, so the glow would only wash it out.
       const level = id === this.selectedId ? (inCloseup ? 0 : 0.16) : id === this.hoverId ? 0.08 : 0;
       obj.traverse((o) => {
@@ -402,16 +509,18 @@ export class ReefScene {
         }
       });
     }
-    const target = this.selectedId ? this.organisms.get(this.selectedId) : null;
-    this.ring.visible = !!target && !inCloseup;
+    const ringId = this.selectedId ?? this.hintId;
+    const target = ringId ? this.organisms.get(ringId) : null;
+    this.ring.visible = !!target && (!inCloseup || !this.selectedId);
     if (target) {
       const box = new THREE.Box3().setFromObject(target);
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
       // The coral thicket is wide; ring its focus colony instead.
-      const anchor = this.selectedId === 'elkhorn-coral' ? this.focusColony.group.position : center;
-      const radius = this.selectedId === 'elkhorn-coral' ? 1.6 : Math.max(size.x, size.z) * 0.65 + 0.08;
+      const anchor = ringId === 'elkhorn-coral' ? this.focusColony.group.position : center;
+      const radius = ringId === 'elkhorn-coral' ? 1.6 : Math.max(size.x, size.z) * 0.65 + 0.08;
       this.ring.scale.setScalar(radius);
+      this.ring.userData.baseScale = radius;
       this.ring.position.set(anchor.x, Math.max(box.min.y, terrainHeight(anchor.x, anchor.z)) + 0.04, anchor.z);
     }
   }
@@ -513,7 +622,36 @@ export class ReefScene {
       this.placeParrot(0.25, 0);
     }
 
+    // Tap reactions run even with ambient motion off: they are direct feedback to a child's tap.
+    for (const [id, r] of this.reactions) {
+      r.t += dt;
+      const p = Math.min(1, r.t / r.duration);
+      const cycles = Math.max(1, Math.round(r.duration));
+      const phase = (p * cycles) % 1;
+      const boing = Math.sin(phase * Math.PI) * (1 - p * 0.3);
+      for (const obj of this.bouncers(id)) obj.scale.set(1 - boing * 0.07, 1 + boing * 0.16, 1 - boing * 0.07);
+      this.spotterModels.get(id)?.react?.(phase);
+      if (p >= 1) {
+        for (const obj of this.bouncers(id)) obj.scale.set(1, 1, 1);
+        this.spotterModels.get(id)?.react?.(0);
+        this.reactions.delete(id);
+        if (this.hintId === id) {
+          this.hintId = null;
+          this.updateHighlights();
+        }
+      }
+    }
+    if (this.hintId) this.ring.scale.setScalar(this.ring.userData.baseScale * (1 + Math.sin(performance.now() / 160) * 0.06));
+
     if (!this.opts.ambientMotion) return;
+
+    for (const [id, m] of this.spotterModels) if (!this.reactions.has(id)) m.animate?.(t);
+    if (this.eagleRay) {
+      // A slow, gliding loop above the meadow.
+      const a = t * 0.22;
+      this.eagleRay.group.position.set(Math.cos(a) * 0.9, Math.sin(a * 2) * 0.12, Math.sin(a) * 0.45);
+      this.eagleRay.group.rotation.y = Math.atan2(-Math.cos(a) * 0.45, -Math.sin(a) * 0.9);
+    }
 
     this.parrot.tail.rotation.y = Math.sin(t * 5) * 0.35;
     this.barracuda.tail.rotation.y = Math.sin(t * 2.2) * (0.2 - hw * 0.12);

@@ -66,6 +66,23 @@ export interface Organism extends ContentRecord {
   assets: string[];
 }
 
+/**
+ * Anything a child can tap in the scene: the five featured organisms plus
+ * "spotter" animals with a one-line, read-aloud fact. Also the targets of the
+ * "Can you find…?" game.
+ */
+export interface Findable extends ContentRecord {
+  /** Used in "Can you find the ___?" — e.g. "sea star". */
+  name: string;
+  habitat: HabitatId;
+  /** One short, kid-friendly fact, spoken aloud (also the caption). */
+  line: string;
+  accessibleDescription: string;
+  /** Featured organisms also have a full card; spotters have a short one. */
+  featured: boolean;
+  assets: string[];
+}
+
 /** Supporting food-resource cards (algae, seagrass, small fish). Not full profiles. */
 export interface FoodResource extends ContentRecord {
   name: string;
