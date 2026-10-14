@@ -23,6 +23,7 @@ import {
   type SpotterModel,
 } from './spotters.ts';
 import { buildLitter, buildSargassum, LITTER_PLACES, type LitterKind } from './changing3d.ts';
+import { loadReefTextures, texturize, type ReefTextures } from './textures.ts';
 import { disposeTree, sharedTime, sunlight, tagOrganism } from './util.ts';
 
 /** The algae-covered side of the rock where the parrotfish grazes. */
@@ -116,6 +117,7 @@ export class ReefScene {
   fps = 0;
 
   private container: HTMLElement;
+  private tex: ReefTextures = {};
 
   constructor(container: HTMLElement, opts: SceneOptions) {
     this.container = container;
@@ -157,6 +159,8 @@ export class ReefScene {
     this.dirLight.shadow.bias = -0.0008;
     this.scene.add(this.dirLight, this.dirLight.target);
 
+    progress(0.12, 'Painting the sand and rocks…');
+    this.tex = await loadReefTextures(this.renderer);
     progress(0.2, 'Shaping the seafloor…');
     await nextFrame();
     // Keep seagrass clear around the turtle, sea star and sea cucumber so children can see them.
@@ -164,7 +168,7 @@ export class ReefScene {
       { x: 4, z: 0.3, r: 1.1 },
       { x: 2.85, z: 1.35, r: 0.45 },
       { x: 5.3, z: 1.65, r: 0.45 },
-    ]);
+    ], this.tex);
     this.scene.add(this.env.root);
 
     progress(0.55, 'Growing the coral…');
@@ -336,6 +340,8 @@ export class ReefScene {
       colony.group.rotation.y = ry;
       coral.add(colony.group);
     }
+    // Fine corallite pores over the branches; each colony keeps its own colour.
+    texturize(coral, this.tex.coral, this.tex.coralN, 3, 1.2);
     this.register('elkhorn-coral', coral);
     this.scene.add(coral);
 
@@ -396,6 +402,11 @@ export class ReefScene {
 
     this.buildSpotters();
     this.buildChanging();
+
+    // Fine skin texture on every animal (the corals, fans and sponges have their own surfaces).
+    const surfaces = new Set(['elkhorn-coral', 'brain-coral', 'sea-fan', 'tube-sponge']);
+    for (const [id, list] of this.instances) if (!surfaces.has(id)) for (const obj of list) texturize(obj, this.tex.skin, this.tex.skinN, 4, 0.6);
+    texturize(this.smallFish.group, this.tex.skin, this.tex.skinN, 4, 0.6);
 
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
@@ -545,6 +556,7 @@ export class ReefScene {
   dispose() {
     cancelAnimationFrame(this.raf);
     sunlight.value = 1;
+    for (const t of Object.values(this.tex)) t?.dispose();
     this.resizeObserver.disconnect();
     disposeTree(this.scene);
     this.renderer.dispose();

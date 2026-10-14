@@ -3,7 +3,8 @@
  * (reef → seagrass → sand) along the x axis.
  */
 import * as THREE from 'three';
-import { noise2, range, rng, sharedTime, smoothstep, sunlight, withCaustics } from './util.ts';
+import { surface, type ReefTextures } from './textures.ts';
+import { noise2, range, rng, sharedTime, smoothstep, sunlight } from './util.ts';
 
 export const SECTION = {
   reef: { x0: -24, x1: -6 },
@@ -22,15 +23,18 @@ export function terrainHeight(x: number, z: number) {
   return base + reefBumps + ripples + backSlope;
 }
 
-function buildFloor() {
+function buildFloor(tex: ReefTextures) {
   const geo = new THREE.PlaneGeometry(80, 34, 240, 100);
   geo.rotateX(-Math.PI / 2);
   geo.translate(3, 0, -5);
   const pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3);
-  const reef = new THREE.Color('#8c8466');
-  const grass = new THREE.Color('#8f8d5e');
-  const sand = new THREE.Color('#e3d4ab');
+  // Colours tint the sand and rubble textures; without textures they are the floor's own colours.
+  const textured = !!tex.sand;
+  const reef = new THREE.Color(textured ? '#c9bea2' : '#8c8466');
+  const grass = new THREE.Color(textured ? '#b1a97a' : '#8f8d5e');
+  const sand = new THREE.Color(textured ? '#f3e6c4' : '#e3d4ab');
+  const blend = new Float32Array(pos.count);
   const c = new THREE.Color();
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
@@ -39,10 +43,15 @@ function buildFloor() {
     c.copy(reef).lerp(grass, smoothstep(-8, -2, x)).lerp(sand, smoothstep(13, 18, x));
     const n = noise2(x * 1.3, z * 1.3) * 0.05;
     colors.set([c.r + n, c.g + n, c.b + n], i * 3);
+    // Coral rubble on the reef floor, fading to sand toward the seagrass.
+    blend[i] = (1 - smoothstep(-9, -4, x)) * (0.75 + 0.25 * noise2(x * 0.7, z * 0.7));
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geo.setAttribute('aBlend', new THREE.BufferAttribute(blend, 1));
   geo.computeVertexNormals();
-  const mat = withCaustics(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), 0.2);
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, map: tex.sand ?? null, normalMap: tex.sandN ?? null });
+  mat.normalScale.setScalar(0.8);
+  surface(mat, { caustics: 0.2, tiles: 0.7, blend: tex.rubble ? { map: tex.rubble, normalMap: tex.rubbleN, tiles: 1.4 } : undefined });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
   return mesh;
@@ -63,7 +72,7 @@ function buildBackdrop() {
   return new THREE.Mesh(geo, mat);
 }
 
-function rock(r: () => number, size: number, color: string) {
+function rock(r: () => number, size: number, color: string, tex: ReefTextures) {
   const geo = new THREE.IcosahedronGeometry(size, 2);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
@@ -74,31 +83,34 @@ function rock(r: () => number, size: number, color: string) {
     pos.setXYZ(i, v.x, v.y, v.z);
   }
   geo.computeVertexNormals();
-  const mesh = new THREE.Mesh(geo, withCaustics(new THREE.MeshStandardMaterial({ color, roughness: 0.95, flatShading: false }), 0.25));
+  const mat = new THREE.MeshStandardMaterial({ color: tex.rock ? '#ffffff' : color, roughness: 0.95, map: tex.rock ?? null, normalMap: tex.rockN ?? null });
+  const mesh = new THREE.Mesh(geo, surface(mat, { caustics: 0.25, tiles: 0.8 }));
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   return mesh;
 }
 
-function boulderCoral(r: () => number, size: number, color: string) {
+function boulderCoral(r: () => number, size: number, color: string, tex: ReefTextures) {
   const geo = new THREE.SphereGeometry(size, 28, 18);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const v = new THREE.Vector3().fromBufferAttribute(pos, i);
-    // Maze-like grooves, like a brain coral's surface.
-    const ridges = Math.sin(v.x * 34 + Math.sin(v.z * 26) * 2.4 + Math.cos(v.y * 18)) * 0.03;
+    // Without textures, carve maze-like grooves into the shape itself.
+    const ridges = tex.brainN ? 0 : Math.sin(v.x * 34 + Math.sin(v.z * 26) * 2.4 + Math.cos(v.y * 18)) * 0.03;
     v.multiplyScalar(1 + ridges + noise2(v.x * 5, v.z * 5) * 0.04);
     v.y = Math.max(v.y * 0.7, -0.05);
     pos.setXYZ(i, v.x, v.y, v.z);
   }
   geo.computeVertexNormals();
-  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.8 }));
+  const mat = new THREE.MeshStandardMaterial({ color: tex.brain ? new THREE.Color(color).lerp(new THREE.Color('#ffffff'), 0.55) : color, roughness: 0.8, map: tex.brain ?? null, normalMap: tex.brainN ?? null });
+  mat.normalScale.setScalar(1.4);
+  const mesh = new THREE.Mesh(geo, surface(mat, { caustics: 0.15, tiles: 1.7 }));
   mesh.rotation.y = r() * Math.PI;
   mesh.castShadow = true;
   return mesh;
 }
 
-function seaFan(r: () => number, size: number) {
+function seaFan(r: () => number, size: number, tex: ReefTextures) {
   const shape = new THREE.Shape();
   shape.moveTo(0, 0);
   for (let i = 0; i <= 12; i++) {
@@ -107,15 +119,20 @@ function seaFan(r: () => number, size: number) {
     shape.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
   }
   shape.closePath();
-  const mat = new THREE.MeshStandardMaterial({ color: '#8a4fa8', side: THREE.DoubleSide, roughness: 0.8, transparent: true, opacity: 0.88 });
+  // With its texture, the fan is a lattice of fine branches; without, a translucent sheet.
+  const mat = tex.seafan
+    ? new THREE.MeshStandardMaterial({ color: '#ffffff', map: tex.seafan, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.8 })
+    : new THREE.MeshStandardMaterial({ color: '#8a4fa8', side: THREE.DoubleSide, roughness: 0.8, transparent: true, opacity: 0.88 });
   const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape, 6), mat);
   mesh.userData.sway = r() * Math.PI * 2;
   return mesh;
 }
 
-function tubeSponge(r: () => number, color: string) {
+function tubeSponge(r: () => number, color: string, tex: ReefTextures) {
   const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, side: THREE.DoubleSide });
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.9, side: THREE.DoubleSide, map: tex.coral ?? null, normalMap: tex.coralN ?? null });
+  mat.normalScale.setScalar(1.5);
+  surface(mat, { tiles: 2.5 });
   for (let i = 0; i < 4; i++) {
     const h = range(r, 0.3, 0.7);
     const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.05, h, 12, 1, true), mat);
@@ -132,6 +149,7 @@ function buildSeagrass(count: number, avoid: { x: number; z: number; r: number }
   blade.translate(0, 0.5, 0);
   const pos = blade.attributes.position;
   for (let i = 0; i < pos.count; i++) pos.setX(i, pos.getX(i) * (1 - pos.getY(i) * 0.55));
+  // No texture map here: on instanced blades it stopped later objects from drawing in some WebGL implementations.
   const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', side: THREE.DoubleSide, roughness: 0.7 });
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = sharedTime;
@@ -244,11 +262,11 @@ export interface Environment {
   shelterElsewhere: THREE.Vector3;
 }
 
-export function buildEnvironment(avoid: { x: number; z: number; r: number }[]): Environment {
+export function buildEnvironment(avoid: { x: number; z: number; r: number }[], tex: ReefTextures = {}): Environment {
   const root = new THREE.Group();
   const r = rng(1234);
   root.add(buildBackdrop());
-  root.add(buildFloor());
+  root.add(buildFloor(tex));
 
   // Reef section: rocks, boulder corals, sea fans and sponges around the elkhorn thicket.
   const rockSpots: [number, number, number][] = [
@@ -262,7 +280,7 @@ export function buildEnvironment(avoid: { x: number; z: number; r: number }[]): 
     [-11.95, 0.36, -0.75],
   ];
   for (const [x, size, z] of rockSpots) {
-    const m = rock(r, size, '#7a7363');
+    const m = rock(r, size, '#7a7363', tex);
     m.position.set(x, terrainHeight(x, z) + size * 0.2, z);
     root.add(m);
   }
@@ -276,7 +294,7 @@ export function buildEnvironment(avoid: { x: number; z: number; r: number }[]): 
   ];
   const boulders: THREE.Mesh[] = [];
   for (const [x, z, size, color] of boulderSpots) {
-    const m = boulderCoral(r, size, color);
+    const m = boulderCoral(r, size, color, tex);
     m.position.set(x, terrainHeight(x, z), z);
     root.add(m);
     boulders.push(m);
@@ -288,7 +306,7 @@ export function buildEnvironment(avoid: { x: number; z: number; r: number }[]): 
     [-17.5, -3.4, 0.6],
     [-8.6, -1.4, 0.5],
   ] as const) {
-    const fan = seaFan(r, s);
+    const fan = seaFan(r, s, tex);
     fan.position.set(x, terrainHeight(x, z), z);
     fan.rotation.y = range(r, -0.5, 0.5);
     root.add(fan);
@@ -300,7 +318,7 @@ export function buildEnvironment(avoid: { x: number; z: number; r: number }[]): 
     [-9.8, 0.2, '#7d4a9e'],
     [-21.4, -0.8, '#c96a2b'],
   ] as const) {
-    const sp = tubeSponge(r, color);
+    const sp = tubeSponge(r, color, tex);
     sponges.push(sp);
     sp.position.set(x, terrainHeight(x, z), z);
     root.add(sp);
