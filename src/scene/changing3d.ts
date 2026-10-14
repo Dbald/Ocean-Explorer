@@ -88,8 +88,8 @@ export function buildSargassum() {
   let nL = 0;
   let nS = 0;
   for (const c of clumps) {
-    nB += Math.round(c.r * 150);
-    nL += Math.round(c.r * 110);
+    nB += Math.round(c.r * 90);
+    nL += Math.round(c.r * 80);
     nS += c.ground ? 0 : Math.round(c.r * 7);
   }
   const bladders = new THREE.InstancedMesh(bladderGeo, bladderMat, nB);
@@ -109,7 +109,7 @@ export function buildSargassum() {
     // Dense, dark core gives the mat its mass when seen from below.
     m.compose(pos.set(c.x, c.y, c.z), q.setFromEuler(e.set(0, r() * 6, 0)), scl.set(c.r * 0.6, c.r * (c.ground ? 0.8 : 1.1), c.r * 0.55));
     cores.setMatrixAt(ci, m);
-    const nb = Math.round(c.r * 150);
+    const nb = Math.round(c.r * 90);
     for (let i = 0; i < nb; i++) {
       const a = r() * Math.PI * 2;
       const d = Math.sqrt(r()) * c.r;
@@ -118,7 +118,7 @@ export function buildSargassum() {
       m.compose(pos.set(c.x + Math.cos(a) * d, c.y + y, c.z + Math.sin(a) * d * 0.85), q.identity(), scl.set(s, s, s));
       bladders.setMatrixAt(iB++, m);
     }
-    const nl = Math.round(c.r * 110);
+    const nl = Math.round(c.r * 80);
     for (let i = 0; i < nl; i++) {
       const a = r() * Math.PI * 2;
       const d = Math.sqrt(r()) * c.r * 1.05;

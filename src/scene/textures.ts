@@ -68,6 +68,8 @@ export interface SurfaceOptions {
   caustics?: number;
   /** Triplanar mapping of `map` and `normalMap`: texture tiles per metre. */
   tiles?: number;
+  /** Project from above only (for the nearly flat seafloor): a third of the texture reads of full triplanar. */
+  planar?: boolean;
   /** A second texture set, blended in by the geometry's `aBlend` attribute (0–1). */
   blend?: { map: THREE.Texture; normalMap?: THREE.Texture; tiles: number };
 }
@@ -81,7 +83,7 @@ export function surface(mat: THREE.MeshStandardMaterial, opts: SurfaceOptions) {
   const tri = !!opts.tiles && !!(mat.map || mat.normalMap);
   const blend = tri && opts.blend ? opts.blend : null;
   const caustics = opts.caustics ?? 0;
-  mat.customProgramCacheKey = () => `oe-surface:${tri ? 1 : 0}:${blend ? 1 : 0}:${blend?.normalMap ? 1 : 0}:${caustics ? 1 : 0}`;
+  mat.customProgramCacheKey = () => `oe-surface:${tri ? 1 : 0}:${blend ? 1 : 0}:${blend?.normalMap ? 1 : 0}:${caustics ? 1 : 0}:${opts.planar ? 1 : 0}`;
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = sharedTime;
     shader.uniforms.uSun = sunlight;
@@ -92,7 +94,7 @@ export function surface(mat: THREE.MeshStandardMaterial, opts: SurfaceOptions) {
       shader.uniforms.uBlendNormal = { value: blend.normalMap ?? null };
       shader.uniforms.uBlendTiles = { value: blend.tiles };
     }
-    const defs = `${tri ? '#define OE_TRI\n' : ''}${blend ? '#define OE_BLEND\n' : ''}${blend?.normalMap ? '#define OE_BLEND_N\n' : ''}${caustics ? '#define OE_CAUSTICS\n' : ''}`;
+    const defs = `${opts.planar ? '#define OE_PLANAR\n' : ''}${tri ? '#define OE_TRI\n' : ''}${blend ? '#define OE_BLEND\n' : ''}${blend?.normalMap ? '#define OE_BLEND_N\n' : ''}${caustics ? '#define OE_CAUSTICS\n' : ''}`;
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
@@ -135,6 +137,11 @@ uniform float uBlendTiles;
 #ifdef OE_BLEND_N
 uniform sampler2D uBlendNormal;
 #endif
+#ifdef OE_PLANAR
+vec3 oeTriW(vec3 n) { return vec3(0.0, 1.0, 0.0); }
+vec4 oeTri(sampler2D t, vec3 p, vec3 w) { return texture2D(t, p.xz); }
+vec3 oeTriN(sampler2D t, vec3 p, vec3 w, vec2 s) { vec2 b = (texture2D(t, p.xz).xy * 2.0 - 1.0) * s; return vec3(b.x, 0.0, b.y); }
+#else
 vec3 oeTriW(vec3 n) { vec3 w = pow(abs(n), vec3(4.0)); return w / (w.x + w.y + w.z); }
 vec4 oeTri(sampler2D t, vec3 p, vec3 w) { return texture2D(t, p.zy) * w.x + texture2D(t, p.xz) * w.y + texture2D(t, p.xy) * w.z; }
 vec3 oeTriN(sampler2D t, vec3 p, vec3 w, vec2 s) {
@@ -143,6 +150,7 @@ vec3 oeTriN(sampler2D t, vec3 p, vec3 w, vec2 s) {
   vec2 c = (texture2D(t, p.xy).xy * 2.0 - 1.0) * s;
   return vec3(0.0, a.y, a.x) * w.x + vec3(b.x, 0.0, b.y) * w.y + vec3(c.x, c.y, 0.0) * w.z;
 }
+#endif
 float oeCaustic(vec2 p, float t) {
   float c = 0.0;
   c += sin(p.x * 2.1 + t * 0.9 + sin(p.y * 1.7 + t * 0.6));

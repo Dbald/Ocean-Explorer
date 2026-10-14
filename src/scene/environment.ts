@@ -12,6 +12,23 @@ export const SECTION = {
   sand: { x0: 15, x1: 30 },
 };
 
+/**
+ * The reef's rock framework: raised, uneven rock behind a sand channel, with a
+ * few patch reefs rising out of the channel. Coral grows on top of it, as on a
+ * real reef. Zero outside the reef section.
+ */
+export function reefLift(x: number, z: number) {
+  const reef = 1 - smoothstep(-8.5, -4, x);
+  if (reef <= 0) return 0;
+  const back = smoothstep(1.4, -1.4, z);
+  const m1 = noise2(x * 0.55 + 11, z * 0.55 - 3);
+  const m2 = noise2(x * 1.3 - 5, z * 1.3 + 7);
+  const mound = smoothstep(-0.15, 0.55, m1);
+  const patches = smoothstep(0.4, 0.8, m1);
+  const h = back * (0.22 + 0.42 * mound) + (1 - back) * patches * 0.32 + 0.05 * m2 * (back + patches);
+  return reef * Math.max(0, h);
+}
+
 export function terrainHeight(x: number, z: number) {
   const reefness = 1 - smoothstep(-8, -3, x);
   const sandness = smoothstep(14, 18, x);
@@ -20,7 +37,7 @@ export function terrainHeight(x: number, z: number) {
   const ripples = sandness * Math.sin(x * 4.2 + Math.sin(z * 0.8) * 1.5) * 0.025;
   // The floor gently drops away behind the scene to give depth.
   const backSlope = Math.min(0, z + 6) * 0.12;
-  return base + reefBumps + ripples + backSlope;
+  return base + reefBumps + ripples + backSlope + reefLift(x, z);
 }
 
 function buildFloor(tex: ReefTextures) {
@@ -43,15 +60,15 @@ function buildFloor(tex: ReefTextures) {
     c.copy(reef).lerp(grass, smoothstep(-8, -2, x)).lerp(sand, smoothstep(13, 18, x));
     const n = noise2(x * 1.3, z * 1.3) * 0.05;
     colors.set([c.r + n, c.g + n, c.b + n], i * 3);
-    // Coral rubble on the reef floor, fading to sand toward the seagrass.
-    blend[i] = (1 - smoothstep(-9, -4, x)) * (0.75 + 0.25 * noise2(x * 0.7, z * 0.7));
+    // Bare reef rock where the framework rises; sand in the channels between.
+    blend[i] = smoothstep(0.05, 0.2, reefLift(x, z)) * (0.85 + 0.15 * noise2(x * 0.7, z * 0.7));
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geo.setAttribute('aBlend', new THREE.BufferAttribute(blend, 1));
   geo.computeVertexNormals();
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, map: tex.sand ?? null, normalMap: tex.sandN ?? null });
   mat.normalScale.setScalar(0.8);
-  surface(mat, { caustics: 0.2, tiles: 0.7, blend: tex.rubble ? { map: tex.rubble, normalMap: tex.rubbleN, tiles: 1.4 } : undefined });
+  surface(mat, { caustics: 0.2, tiles: 0.7, planar: true, blend: tex.rock ? { map: tex.rock, normalMap: tex.rockN, tiles: 0.9 } : undefined });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
   return mesh;
@@ -73,7 +90,7 @@ function buildBackdrop() {
 }
 
 function rock(r: () => number, size: number, color: string, tex: ReefTextures) {
-  const geo = new THREE.IcosahedronGeometry(size, 4);
+  const geo = new THREE.IcosahedronGeometry(size, 3);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const v = new THREE.Vector3().fromBufferAttribute(pos, i);
@@ -149,7 +166,7 @@ function buildSeagrass(count: number, avoid: { x: number; z: number; r: number }
   blade.translate(0, 0.5, 0);
   const pos = blade.attributes.position;
   for (let i = 0; i < pos.count; i++) pos.setX(i, pos.getX(i) * (1 - pos.getY(i) * 0.55));
-  // No texture map here: on instanced blades it stopped later objects from drawing in some WebGL implementations.
+  // Plain blades: at this size a texture adds little, and the meadow is drawn thousands of times.
   const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', side: THREE.DoubleSide, roughness: 0.7 });
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = sharedTime;
@@ -334,5 +351,5 @@ export function buildEnvironment(avoid: { x: number; z: number; r: number }[], t
   const snow = marineSnow(600);
   root.add(snow);
 
-  return { root, seagrass, shafts, snow, fans, sponges, boulders, shelterElsewhere: new THREE.Vector3(-18.92, 0.3, 1.12) };
+  return { root, seagrass, shafts, snow, fans, sponges, boulders, shelterElsewhere: new THREE.Vector3(-18.92, 0.3 + reefLift(-18.92, 1.12), 1.12) };
 }

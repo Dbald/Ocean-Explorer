@@ -258,18 +258,19 @@ export function buildBarracuda(): FishRig {
   gape.scale.set(2.1, 0.22, 0.5);
   gape.position.set(L * 0.425, -0.032, 0);
   g.add(gape);
-  const tooth = new THREE.ConeGeometry(0.005, 0.022, 6);
-  const ivory = std('#f4f1e6', { roughness: 0.3 });
+  // All the teeth in one mesh.
+  const teeth: THREE.BufferGeometry[] = [];
   for (const s of [1, -1])
     for (let i = 0; i < 6; i++) {
-      const up = new THREE.Mesh(tooth, ivory);
-      up.rotation.x = Math.PI;
-      up.position.set(L * 0.37 + i * 0.024, -0.03, s * (0.02 - i * 0.002));
-      g.add(up);
-      const low = new THREE.Mesh(tooth, ivory);
-      low.position.set(L * 0.38 + i * 0.024, -0.036 - i * 0.0025, s * (0.018 - i * 0.002));
-      g.add(low);
+      const up = new THREE.ConeGeometry(0.005, 0.022, 6);
+      up.rotateX(Math.PI);
+      up.translate(L * 0.37 + i * 0.024, -0.03, s * (0.02 - i * 0.002));
+      const low = new THREE.ConeGeometry(0.005, 0.022, 6);
+      low.translate(L * 0.38 + i * 0.024, -0.036 - i * 0.0025, s * (0.018 - i * 0.002));
+      teeth.push(up, low);
     }
+  g.add(new THREE.Mesh(mergeGeometries(teeth), std('#f4f1e6', { roughness: 0.3 })));
+  teeth.forEach((t) => t.dispose());
   const fin = finMat('#4a5b6e');
   // Spiny first dorsal fin mid-body; the second dorsal and anal fins sit far back.
   g.add(new THREE.Mesh(outlineFin(L, [[0.02, 0.054], [0.11, 0.055], [0.08, 0.075], [0.04, 0.11], [0.015, 0.09]], 'up'), fin));
@@ -363,11 +364,11 @@ const shellSkin = () =>
       // Each scute has a sunburst of pale streaks radiating from its centre.
       const burst = 0.5 + 0.5 * Math.sin(ang * 9 + k * 1.7 + Math.sin(ang * 3) * 1.5);
       const streak = burst * Math.min(1, d1 * 9) * 0.55;
-      const base = [96, 72, 40].map((c) => c * tint[k]);
-      const light = [196, 160, 92];
+      const base = [128, 78, 38].map((c) => c * tint[k]);
+      const light = [222, 168, 96];
       let c = base.map((x, i) => x + (light[i] - x) * streak);
       // Pale seams between scutes.
-      if (edge < 0.012) c = c.map((x) => x + (225 - x) * (1 - edge / 0.012) * 0.6);
+      if (edge < 0.012) c = c.map((x, i) => x + ([232, 214, 160][i] - x) * (1 - edge / 0.012) * 0.7);
       return c as [number, number, number];
     });
     grain(ctx, w, h, 13, 0.15);
@@ -378,10 +379,14 @@ const scaleSkin = () =>
   paint('turtle-skin', 256, 256, (ctx, w, h) => {
     const r = rng(21);
     const seeds: [number, number][] = Array.from({ length: 70 }, () => [r(), r()]);
+    // Dark brown scales with bright yellow edges, as on a green turtle's head and flippers.
     cellPaint(ctx, w, h, seeds, (k, _d1, edge) => {
-      const t = 0.85 + ((k * 37) % 11) / 40;
-      const base: [number, number, number] = [92 * t, 98 * t, 62 * t];
-      if (edge < 0.02) return base.map((x) => x + (214 - x) * (1 - edge / 0.02) * 0.7) as [number, number, number];
+      const t = 0.8 + ((k * 37) % 11) / 30;
+      const base: [number, number, number] = [86 * t, 62 * t, 36 * t];
+      if (edge < 0.028) {
+        const e = 1 - edge / 0.028;
+        return base.map((x, i) => x + ([236, 214, 120][i] - x) * Math.min(1, e * 1.4)) as [number, number, number];
+      }
       return base;
     });
   });

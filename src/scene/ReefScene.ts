@@ -5,7 +5,9 @@
  */
 import * as THREE from 'three';
 import type { HabitatId } from '../content/types.ts';
-import { buildEnvironment, terrainHeight, type Environment } from './environment.ts';
+import { AmbientLife } from './ambientLife.ts';
+import { buildEnvironment, reefLift, terrainHeight, type Environment } from './environment.ts';
+import { buildReefGarden } from './reefGarden.ts';
 import { buildBarracuda, buildConch, buildElkhorn, buildParrotfish, buildSmallFish, buildTurtle, type CoralColony, type FishRig, type TurtleRig } from './organisms.ts';
 import {
   buildBlueTangs,
@@ -119,6 +121,7 @@ export class ReefScene {
 
   private container: HTMLElement;
   private tex: ReefTextures = {};
+  private life: AmbientLife | null = null;
 
   constructor(container: HTMLElement, opts: SceneOptions) {
     this.container = container;
@@ -242,6 +245,24 @@ export class ReefScene {
     const crab = buildHermitCrab();
     crab.group.scale.setScalar(1.6);
     this.addSpotter('hermit-crab', crab, 16.85, 1.55, { yaw: -0.6, tap: 0.25 });
+  }
+
+  /** Coral cover on the reef's rock framework, kept clear of every tappable animal; and life in the distance. */
+  private buildGarden() {
+    const clear = [
+      { x: -17.6, z: -0.2, r: 1.5 },
+      { x: -15.1, z: -1.6, r: 1.1 },
+      { x: -19.6, z: -2.4, r: 1.3 },
+      { x: -13.4, z: 0.4, r: 0.9 },
+      { x: GRAZE_ROCK.x, z: GRAZE_ROCK.z, r: 0.7 },
+      { x: this.fishHome.x, z: this.fishHome.z, r: 0.6 },
+      { x: this.env.shelterElsewhere.x, z: this.env.shelterElsewhere.z, r: 0.6 },
+      ...[...this.organisms.values(), ...this.env.boulders, ...this.env.fans, ...this.env.sponges].map((o) => ({ x: o.position.x, z: o.position.z, r: 0.55 })),
+      ...[...this.litter.values()].map((l) => ({ x: l.base.x, z: l.base.z, r: 0.45 })),
+    ];
+    this.scene.add(buildReefGarden(this.tex, clear, this.opts.quality === 'low'));
+    this.life = new AmbientLife(this.opts.quality === 'low');
+    this.scene.add(this.life.group);
   }
 
   /** Expedition 2 layers. Built hidden; the app turns them on for The Changing Reef. */
@@ -380,6 +401,9 @@ export class ReefScene {
     this.scene.add(conch);
 
     // The small, unprofiled reef fish used in the shelter comparison (not selectable).
+    // Its hiding place moves up with the rock the coral grows on.
+    this.fishHome.y += reefLift(this.fishHome.x, this.fishHome.z);
+    this.fishTo.copy(this.fishHome);
     this.smallFish = buildSmallFish();
     this.smallFish.group.position.copy(this.fishHome);
     this.smallFish.group.rotation.y = -0.4;
@@ -404,6 +428,7 @@ export class ReefScene {
 
     this.buildSpotters();
     this.buildChanging();
+    this.buildGarden();
 
     // Fine skin texture on every animal (the corals, fans and sponges have their own surfaces).
     const surfaces = new Set(['elkhorn-coral', 'brain-coral', 'sea-fan', 'tube-sponge']);
@@ -412,7 +437,10 @@ export class ReefScene {
 
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
-      if (m.isMesh && o.userData.organismId) m.castShadow = true;
+      if (!m.isMesh || !o.userData.organismId) return;
+      // Small parts (eyes, teeth, fins) add draw calls to the shadow pass but no visible shadow.
+      if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere();
+      m.castShadow = (m.geometry.boundingSphere?.radius ?? 1) * Math.max(m.scale.x, m.scale.y, m.scale.z) > 0.07;
     });
   }
 
@@ -430,7 +458,7 @@ export class ReefScene {
         position: new THREE.Vector3(g.x + 0.6, g.y + 0.3, g.z + 1.15),
         target: new THREE.Vector3(g.x + 0.25, g.y + 0.04, g.z),
       },
-      'elkhorn-coral': { position: new THREE.Vector3(-17.4, 1.7, 3.5), target: new THREE.Vector3(-17.6, 0.65, -0.2) },
+      'elkhorn-coral': { position: new THREE.Vector3(-17.4, 1.7 + reefLift(-17.6, -0.2), 3.5), target: new THREE.Vector3(-17.6, 0.65 + reefLift(-17.6, -0.2), -0.2) },
       'great-barracuda': { position: new THREE.Vector3(h.x + 0.3, h.y + 0.25, h.z + 2.6), target: h.clone() },
       'green-sea-turtle': {
         position: new THREE.Vector3(turtle.x + 0.9, turtle.y + 0.75, turtle.z + 1.7),
@@ -756,6 +784,7 @@ export class ReefScene {
     if (!this.opts.ambientMotion) return;
 
     for (const [id, m] of this.spotterModels) if (!this.reactions.has(id)) m.animate?.(t);
+    this.life?.update(t);
     if (this.sargT > 0) this.sargassum?.animate(t);
     for (const [id, l] of this.litter) {
       if (!l.active || !l.free) continue;
