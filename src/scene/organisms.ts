@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { outlineFin, profiledBody, type Profile } from './fishkit.ts';
 import { blotches, countershade, eyeTexture, finTexture, grain, paint, scales } from './skins.ts';
 import { range, rng, type Rand } from './util.ts';
 
@@ -146,32 +147,44 @@ const parrotSkin = () =>
 const barracudaSkin = () =>
   paint('barracuda', 1024, 192, (ctx, w, h) => {
     countershade(ctx, w, h, [
-      [0, '#34465a'],
-      [0.3, '#7d8fa0'],
-      [0.55, '#cdd7df'],
-      [1, '#f3f6f8'],
+      [0, '#3a4b5d'],
+      [0.28, '#8e9eac'],
+      [0.5, '#d4dde4'],
+      [1, '#f4f7f9'],
     ]);
-    // Dark, slanted bars along the upper side.
-    ctx.fillStyle = 'rgba(30,42,56,0.55)';
+    // Dark, slanted bars along the upper side, fading toward the head.
     for (let i = 0; i < 20; i++) {
-      const x = (0.14 + i * 0.033) * w;
+      const x = (0.1 + i * 0.033) * w;
+      ctx.fillStyle = `rgba(28,40,54,${0.55 - Math.max(0, i - 14) * 0.08})`;
       ctx.beginPath();
       ctx.moveTo(x, 0);
-      ctx.lineTo(x + 0.012 * w, 0);
-      ctx.lineTo(x - 0.004 * w, 0.42 * h);
-      ctx.lineTo(x - 0.014 * w, 0.42 * h);
+      ctx.lineTo(x + 0.013 * w, 0);
+      ctx.lineTo(x - 0.006 * w, 0.44 * h);
+      ctx.lineTo(x - 0.018 * w, 0.44 * h);
       ctx.fill();
     }
     // Scattered black blotches on the lower side toward the tail.
-    blotches(ctx, w, h, 17, 16, 6, 10, 'rgba(10,14,18,1)', 0.8, [0.08, 0.55, 0.55, 0.78]);
+    blotches(ctx, w, h, 17, 18, 6, 10, 'rgba(10,14,18,1)', 0.85, [0.06, 0.5, 0.55, 0.72]);
     // Lateral line.
-    ctx.strokeStyle = 'rgba(40,50,60,0.4)';
+    ctx.strokeStyle = 'rgba(40,50,60,0.45)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0.05 * w, 0.45 * h);
-    ctx.quadraticCurveTo(0.5 * w, 0.4 * h, 0.9 * w, 0.42 * h);
+    ctx.moveTo(0.03 * w, 0.48 * h);
+    ctx.quadraticCurveTo(0.5 * w, 0.42 * h, 0.82 * w, 0.42 * h);
     ctx.stroke();
-    scales(ctx, w, h, 9, '#ffffff', 0.08, 0.05, 0.85);
+    scales(ctx, w, h, 8, '#ffffff', 0.1, 0.03, 0.8);
+    // The curved edge of the gill cover, and a darker, smoother head.
+    ctx.strokeStyle = 'rgba(25,32,40,0.85)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(0.825 * w, 0.06 * h);
+    ctx.quadraticCurveTo(0.8 * w, 0.55 * h, 0.835 * w, 0.95 * h);
+    ctx.stroke();
+    const head = ctx.createLinearGradient(0.83 * w, 0, w, 0);
+    head.addColorStop(0, 'rgba(120,135,150,0)');
+    head.addColorStop(1, 'rgba(120,135,150,0.35)');
+    ctx.fillStyle = head;
+    ctx.fillRect(0.83 * w, 0, 0.17 * w, h * 0.5);
   });
 
 const blueFishSkin = () =>
@@ -221,40 +234,68 @@ export function buildParrotfish(): FishRig {
   return { group: g, tail };
 }
 
+/** Great barracuda, traced from a side-view photo: long and torpedo-shaped, with a pointed head and an underbite. */
+const BARRACUDA: Profile = {
+  top: [[0, 0.013], [0.08, 0.021], [0.25, 0.043], [0.5, 0.058], [0.72, 0.057], [0.84, 0.047], [0.93, 0.03], [0.99, 0.01], [1, 0.006]],
+  bottom: [[0, -0.013], [0.08, -0.021], [0.25, -0.042], [0.5, -0.058], [0.72, -0.054], [0.84, -0.044], [0.93, -0.03], [0.99, -0.02], [1, -0.016]],
+  width: [[0, 0.008], [0.1, 0.014], [0.4, 0.038], [0.7, 0.04], [0.9, 0.027], [1, 0.006]],
+};
+
 export function buildBarracuda(): FishRig {
   const g = new THREE.Group();
   const L = 1.3;
-  const body = new THREE.Mesh(fishBody(L, 0.17, 0.13, 0.42, 0.75, { stations: 56 }), std('#ffffff', { map: barracudaSkin(), metalness: 0.35, roughness: 0.32 }));
+  const body = new THREE.Mesh(profiledBody(L, BARRACUDA), std('#ffffff', { map: barracudaSkin(), metalness: 0.35, roughness: 0.3 }));
   g.add(body);
-  // Long, jutting lower jaw (the underbite) with a pointed upper jaw above it.
-  const silver = std('#c7d2dc', { metalness: 0.45, roughness: 0.3 });
-  const jaw = new THREE.Mesh(new THREE.ConeGeometry(0.032, 0.2, 14), silver);
-  jaw.rotation.z = -Math.PI / 2;
+  const silver = std('#c9d3dc', { metalness: 0.4, roughness: 0.3 });
+  // The lower jaw juts out past the upper jaw.
+  const jaw = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.22, 16), silver);
+  jaw.rotation.z = -Math.PI / 2 - 0.1;
   jaw.scale.set(1, 1, 0.75);
-  jaw.position.set(L * 0.5 + 0.02, -0.022, 0);
+  jaw.position.set(L * 0.43, -0.046, 0);
   g.add(jaw);
-  const fin = finMat('#46566a');
-  const d1 = new THREE.Mesh(finShape([[0, 0.065], [0.11, 0.07], [0.03, 0.15]]), fin);
-  d1.position.x = 0.04;
-  g.add(d1);
-  const d2 = new THREE.Mesh(finShape([[0, 0.05], [0.1, 0.05], [0.0, 0.12]]), fin);
-  d2.position.x = -0.36;
-  g.add(d2);
-  const anal = new THREE.Mesh(finShape([[0, -0.05], [0.1, -0.05], [0.0, -0.11]], 'down'), fin);
-  anal.position.x = -0.36;
-  g.add(anal);
+  // The open gape, with sharp teeth in both jaws.
+  const gape = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 8), std('#2a1c1e', { roughness: 0.8 }));
+  gape.scale.set(2.1, 0.22, 0.5);
+  gape.position.set(L * 0.425, -0.032, 0);
+  g.add(gape);
+  const tooth = new THREE.ConeGeometry(0.005, 0.022, 6);
+  const ivory = std('#f4f1e6', { roughness: 0.3 });
+  for (const s of [1, -1])
+    for (let i = 0; i < 6; i++) {
+      const up = new THREE.Mesh(tooth, ivory);
+      up.rotation.x = Math.PI;
+      up.position.set(L * 0.37 + i * 0.024, -0.03, s * (0.02 - i * 0.002));
+      g.add(up);
+      const low = new THREE.Mesh(tooth, ivory);
+      low.position.set(L * 0.38 + i * 0.024, -0.036 - i * 0.0025, s * (0.018 - i * 0.002));
+      g.add(low);
+    }
+  const fin = finMat('#4a5b6e');
+  // Spiny first dorsal fin mid-body; the second dorsal and anal fins sit far back.
+  g.add(new THREE.Mesh(outlineFin(L, [[0.02, 0.054], [0.11, 0.055], [0.08, 0.075], [0.04, 0.11], [0.015, 0.09]], 'up'), fin));
+  g.add(new THREE.Mesh(outlineFin(L, [[-0.33, 0.035], [-0.25, 0.041], [-0.27, 0.06], [-0.31, 0.085], [-0.335, 0.06]], 'up'), fin));
+  g.add(new THREE.Mesh(outlineFin(L, [[-0.33, -0.034], [-0.25, -0.04], [-0.28, -0.06], [-0.32, -0.08], [-0.335, -0.055]], 'down'), fin));
   for (const s of [1, -1]) {
-    const pec = new THREE.Mesh(finShape([[0, 0], [-0.1, 0.02], [-0.11, -0.01], [-0.02, -0.015]], 'back'), finMat('#9aa8b6'));
-    pec.position.set(L * 0.3, -0.03, s * 0.055);
-    pec.rotation.y = s * 0.45;
+    const pelvic = new THREE.Mesh(outlineFin(L, [[0, 0], [-0.07, -0.012], [-0.06, -0.028], [-0.01, -0.012]], 'back'), finMat('#a4b2bf'));
+    pelvic.position.set(L * 0.04, -L * 0.048, s * 0.022);
+    pelvic.rotation.x = s * 0.35;
+    g.add(pelvic);
+    const pec = new THREE.Mesh(outlineFin(L, [[0, 0], [-0.075, 0.01], [-0.08, -0.004], [-0.01, -0.01]], 'back'), finMat('#a4b2bf'));
+    pec.position.set(L * 0.3, -0.032, s * 0.045);
+    pec.rotation.y = s * 0.35;
     g.add(pec);
   }
-  // Forked tail, dark with pale tips.
+  // Deeply forked tail, dark with pale tips.
   const tail = new THREE.Group();
-  tail.add(new THREE.Mesh(finShape([[0, 0.015], [-0.18, 0.16], [-0.15, 0.13], [-0.1, 0], [-0.15, -0.13], [-0.18, -0.16], [0, -0.015]], 'back'), finMat('#2f3b48')));
-  tail.position.set(-L * 0.48, 0, 0);
+  tail.add(
+    new THREE.Mesh(
+      outlineFin(L, [[0.01, 0.012], [-0.06, 0.05], [-0.13, 0.105], [-0.115, 0.065], [-0.075, 0.0], [-0.115, -0.065], [-0.13, -0.105], [-0.06, -0.05], [0.01, -0.012]], 'back'),
+      finMat('#33404e'),
+    ),
+  );
+  tail.position.set(-L * 0.5, 0, 0);
   g.add(tail);
-  eyes(g, L * 0.39, 0.024, 0.045, 0.018, '#c9c2a2');
+  eyes(g, L * 0.39, 0.03, 0.034, 0.02, '#d9d3b5');
   return { group: g, tail };
 }
 

@@ -6,7 +6,8 @@
  */
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { eyes, finMat, finShape, fishBody, std } from './organisms.ts';
+import { contourFin, outlineFin, profiledBody, type Profile } from './fishkit.ts';
+import { eyes, finMat, finShape, std } from './organisms.ts';
 import { blotches, countershade, grain, paint, scales } from './skins.ts';
 import { range, rng } from './util.ts';
 
@@ -43,13 +44,13 @@ const tube = (points: THREE.Vector3[], radius: number, mat: THREE.Material, tape
 const sharkSkin = () =>
   paint('nurse-shark', 1024, 256, (ctx, w, h) => {
     countershade(ctx, w, h, [
-      [0, '#6f5532'],
-      [0.45, '#9a7a4a'],
-      [0.72, '#c8ad7c'],
-      [1, '#e6d6b0'],
+      [0, '#7d6038'],
+      [0.4, '#9c7b4c'],
+      [0.7, '#b8986a'],
+      [1, '#d9c39a'],
     ]);
-    blotches(ctx, w, h, 7, 40, 10, 26, 'rgba(70,52,28,1)', 0.18, [0, 0, 1, 0.5]);
-    grain(ctx, w, h, 9, 0.25);
+    blotches(ctx, w, h, 7, 30, 14, 30, 'rgba(90,66,36,1)', 0.12, [0, 0, 1, 0.55]);
+    grain(ctx, w, h, 9, 0.18);
   });
 
 const lobsterSkin = () =>
@@ -91,7 +92,7 @@ const tangSkin = () =>
     ctx.lineWidth = 1.5;
     for (let i = 1; i < 12; i++) {
       ctx.beginPath();
-      for (let x = 0; x <= w; x += 6) ctx.lineTo(x, (i / 12) * h + Math.sin(x * 0.09 + i) * 2.5);
+      for (let x = 0; x <= w; x += 6) ctx.lineTo(x, (i / 12) * h + Math.sin(x * 0.03 + i) * 1.2);
       ctx.stroke();
     }
     // The pale spine at the base of the tail.
@@ -212,37 +213,56 @@ const shellBands = (key: string, a: string, b: string) =>
 
 // ── Animals ──────────────────────────────────────────────────────────────────
 
+/** Nurse shark, traced from photos: a broad, flattened head, two big rounded dorsal fins set far back, and a long upper tail lobe. */
+const NURSE: Profile = {
+  top: [[0, 0.018], [0.1, 0.028], [0.3, 0.058], [0.55, 0.082], [0.75, 0.083], [0.9, 0.064], [0.97, 0.04], [1, 0.012]],
+  bottom: [[0, -0.018], [0.1, -0.026], [0.3, -0.045], [0.55, -0.06], [0.75, -0.064], [0.9, -0.054], [0.97, -0.036], [1, -0.012]],
+  width: [[0, 0.014], [0.2, 0.038], [0.55, 0.088], [0.8, 0.09], [0.95, 0.062], [1, 0.016]],
+};
+
 export function buildNurseShark(): SpotterModel {
   const g = new THREE.Group();
-  const skin = std('#ffffff', { map: sharkSkin(), roughness: 0.8 });
-  const L = 1.6;
-  const body = new THREE.Mesh(fishBody(L, 0.26, 0.32, 0.38, 0.3, { stations: 56, squashTail: 0.45 }), skin);
-  body.scale.y = 0.85;
-  g.add(body);
-  // Shark fins have no rays: plain skin colour, rounded.
-  const finSkin = std('#8a6c44', { side: THREE.DoubleSide, roughness: 0.8 });
-  const d1 = new THREE.Mesh(finShape([[0, 0.08], [0.17, 0.08], [0.06, 0.25], [0.0, 0.23]]), finSkin);
-  d1.position.x = -0.25;
-  g.add(d1);
-  const d2 = new THREE.Mesh(finShape([[0, 0.06], [0.13, 0.06], [0.03, 0.18], [-0.01, 0.16]]), finSkin);
-  d2.position.x = -0.52;
-  g.add(d2);
-  const tail = new THREE.Group();
-  // Long upper lobe and almost no lower lobe, as in nurse sharks.
-  tail.add(new THREE.Mesh(finShape([[0.02, 0.035], [-0.3, 0.05], [-0.46, 0.025], [-0.44, -0.005], [-0.12, -0.05], [0.02, -0.04]], 'back'), finSkin));
-  tail.position.set(-L * 0.48, 0, 0);
-  g.add(tail);
+  const L = 1.45;
+  const skin = std('#ffffff', { map: sharkSkin(), roughness: 0.75 });
+  g.add(new THREE.Mesh(profiledBody(L, NURSE, { flat: 2.6 }), skin));
+  // Shark fins have no rays: thick, plain skin.
+  const finSkin = std('#a3824f', { side: THREE.DoubleSide, roughness: 0.8 });
+  g.add(new THREE.Mesh(outlineFin(L, [[-0.13, 0.07], [0.0, 0.08], [-0.02, 0.13], [-0.055, 0.19], [-0.1, 0.18], [-0.135, 0.13]], 'up'), finSkin));
+  g.add(new THREE.Mesh(outlineFin(L, [[-0.31, 0.04], [-0.2, 0.052], [-0.215, 0.1], [-0.25, 0.135], [-0.29, 0.125], [-0.315, 0.085]], 'up'), finSkin));
+  g.add(new THREE.Mesh(outlineFin(L, [[-0.3, -0.032], [-0.21, -0.04], [-0.24, -0.075], [-0.285, -0.07]], 'down'), finSkin));
   for (const side of [1, -1]) {
-    const pec = new THREE.Mesh(finShape([[0, 0], [-0.08, 0.02], [-0.2, -0.02], [-0.16, -0.08], [-0.02, -0.04]], 'back'), finSkin);
-    pec.rotation.x = side * Math.PI * 0.42;
-    pec.position.set(0.32, -0.08, side * 0.13);
+    // Big, rounded pectoral fins angled out and down, and smaller pelvic fins under the first dorsal.
+    const pec = new THREE.Mesh(outlineFin(L, [[0, 0], [-0.03, 0.09], [-0.1, 0.16], [-0.16, 0.15], [-0.12, 0.06], [-0.06, 0.0]], 'back'), finSkin);
+    pec.rotation.x = side * (Math.PI / 2 + 0.35);
+    pec.position.set(L * 0.24, -0.05, side * 0.08);
     g.add(pec);
+    const pelvic = new THREE.Mesh(outlineFin(L, [[0, 0], [-0.03, 0.05], [-0.08, 0.07], [-0.07, 0.02]], 'back'), finSkin);
+    pelvic.rotation.x = side * (Math.PI / 2 + 0.5);
+    pelvic.position.set(-L * 0.06, -0.06, side * 0.06);
+    g.add(pelvic);
     const barbel = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.004, 0.07, 6), skin);
-    barbel.position.set(L * 0.49, -0.05, side * 0.03);
-    barbel.rotation.z = 0.4;
+    barbel.position.set(L * 0.495, -0.04, side * 0.028);
+    barbel.rotation.z = 0.5;
     g.add(barbel);
   }
-  eyes(g, L * 0.38, 0.04, 0.085, 0.013, '#b9a46a');
+  // A small mouth on the underside of the snout.
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 8), std('#3a2a1a'));
+  mouth.scale.set(0.6, 0.25, 1.4);
+  mouth.position.set(L * 0.47, -0.045, 0);
+  g.add(mouth);
+  const tail = new THREE.Group();
+  // Long upper lobe with a notch near the tip, and only a small lower lobe.
+  tail.add(
+    new THREE.Mesh(
+      outlineFin(L, [[0.02, 0.02], [-0.12, 0.04], [-0.26, 0.068], [-0.36, 0.085], [-0.38, 0.058], [-0.33, 0.03], [-0.27, 0.012], [-0.25, -0.016], [-0.15, -0.036], [-0.05, -0.044], [0.02, -0.02]], 'back'),
+      finSkin,
+    ),
+  );
+  tail.position.set(-L * 0.5, 0, 0);
+  // The tail lobe angles upward, as in the photos.
+  tail.children[0].rotation.z = 0.16;
+  g.add(tail);
+  eyes(g, L * 0.43, 0.04, 0.072, 0.011, '#b9a46a');
   return {
     group: g,
     // Resting: just a slow sway of the tail.
@@ -407,39 +427,44 @@ export function buildOctopus(): SpotterModel {
 
 interface FishSpec {
   skin: () => THREE.Texture | null;
+  profile: Profile;
   fin: string;
   tailFin: string;
-  /** Continuous dorsal and anal fins (tangs) or a spiny dorsal (damselfish). */
-  tall?: boolean;
+  /** Dorsal fin along the back: start, end and heights (in units of body length). */
+  dorsal: [number, number, [number, number][]];
+  anal: [number, number, [number, number][]];
+  tail: [number, number][];
+  eye: [number, number];
 }
 
-function smallFish(spec: FishSpec, length: number, height: number): { group: THREE.Group; tail: THREE.Object3D } {
+function smallFish(spec: FishSpec, length: number): { group: THREE.Group; tail: THREE.Object3D } {
   const g = new THREE.Group();
-  g.add(new THREE.Mesh(fishBody(length, height, height * 0.36, 0.5, 0.36), std('#ffffff', { map: spec.skin(), roughness: 0.38 })));
   const L = length;
-  const H = height;
+  g.add(new THREE.Mesh(profiledBody(L, spec.profile, { stations: 40, radial: 28 }), std('#ffffff', { map: spec.skin(), roughness: 0.38 })));
   const fin = finMat(spec.fin);
-  const dTop = spec.tall ? 0.78 : 0.68;
-  g.add(new THREE.Mesh(finShape([[-L * 0.32, H * 0.3], [L * 0.22, H * 0.42], [L * 0.1, H * dTop], [-L * 0.25, H * 0.62], [-L * 0.36, H * 0.42]]), fin));
-  g.add(new THREE.Mesh(finShape([[-L * 0.32, -H * 0.3], [L * 0.02, -H * 0.4], [-L * 0.08, -H * (dTop - 0.05)], [-L * 0.3, -H * 0.55]], 'down'), fin));
+  g.add(new THREE.Mesh(contourFin(L, spec.profile, spec.dorsal[0], spec.dorsal[1], spec.dorsal[2], 'top'), fin));
+  g.add(new THREE.Mesh(contourFin(L, spec.profile, spec.anal[0], spec.anal[1], spec.anal[2], 'bottom'), fin));
   for (const s of [1, -1]) {
-    const pec = new THREE.Mesh(finShape([[0, 0], [-L * 0.18, H * 0.12], [-L * 0.2, -H * 0.05]], 'back'), finMat(spec.fin, { opacity: 0.8 }));
-    pec.position.set(L * 0.18, -H * 0.05, s * H * 0.17);
-    pec.rotation.y = s * 0.5;
+    const pec = new THREE.Mesh(outlineFin(L, [[0, 0], [-0.16, 0.06], [-0.18, -0.01], [-0.04, -0.04]], 'back'), finMat(spec.fin, { opacity: 0.85 }));
+    pec.position.set(L * 0.2, -L * 0.04, s * L * 0.07);
+    pec.rotation.y = s * 0.45;
     g.add(pec);
+    const pelvic = new THREE.Mesh(outlineFin(L, [[0, 0], [-0.1, -0.12], [-0.04, -0.13]], 'down'), finMat(spec.fin));
+    pelvic.position.set(L * 0.14, -L * 0.2, s * L * 0.03);
+    g.add(pelvic);
   }
   const tail = new THREE.Group();
-  tail.add(new THREE.Mesh(finShape([[0, H * 0.06], [-L * 0.3, H * 0.45], [-L * 0.24, 0], [-L * 0.3, -H * 0.45], [0, -H * 0.06]], 'back'), finMat(spec.tailFin)));
-  tail.position.x = -L * 0.47;
+  tail.add(new THREE.Mesh(outlineFin(L, spec.tail, 'back'), finMat(spec.tailFin)));
+  tail.position.x = -L * 0.5;
   g.add(tail);
-  eyes(g, L * 0.33, H * 0.12, H * 0.15, L * 0.04);
+  eyes(g, L * (spec.eye[0] - 0.5), L * spec.eye[1], L * 0.06, L * 0.045);
   return { group: g, tail };
 }
 
 /** A small group of fish swimming a slow loop around their own centre. */
-function school(spec: FishSpec, length: number, height: number, count: number, radius: number, speed: number): SpotterModel {
+function school(spec: FishSpec, length: number, count: number, radius: number, speed: number): SpotterModel {
   const g = new THREE.Group();
-  const fish = Array.from({ length: count }, () => smallFish(spec, length, height));
+  const fish = Array.from({ length: count }, () => smallFish(spec, length));
   fish.forEach((f) => g.add(f.group));
   const place = (t: number) =>
     fish.forEach((f, i) => {
@@ -452,8 +477,52 @@ function school(spec: FishSpec, length: number, height: number, count: number, r
   return { group: g, animate: place, react: (p) => fish.forEach((f) => (f.tail.rotation.y = Math.sin(p * 40) * 0.6)) };
 }
 
-export const buildBlueTangs = () => school({ skin: tangSkin, fin: '#2d5fd8', tailFin: '#2a55c8', tall: true }, 0.25, 0.17, 3, 0.45, 0.35);
-export const buildSergeantMajors = () => school({ skin: sergeantSkin, fin: '#d8d3a8', tailFin: '#d9cf8a' }, 0.18, 0.12, 3, 0.35, 0.45);
+/** Caribbean blue tang (Acanthurus coeruleus): a deep oval disc with a steep forehead, long fins edged in bright blue, and a crescent tail. */
+const TANG: Profile = {
+  top: [[0, 0.06], [0.08, 0.09], [0.25, 0.22], [0.5, 0.29], [0.7, 0.285], [0.85, 0.23], [0.95, 0.12], [1, 0.02]],
+  bottom: [[0, -0.06], [0.08, -0.09], [0.25, -0.22], [0.5, -0.28], [0.7, -0.25], [0.85, -0.17], [0.95, -0.08], [1, -0.01]],
+  width: [[0, 0.02], [0.3, 0.065], [0.6, 0.075], [0.9, 0.05], [1, 0.012]],
+};
+export const buildBlueTangs = () =>
+  school(
+    {
+      skin: tangSkin,
+      profile: TANG,
+      fin: '#2f63e0',
+      tailFin: '#2a55c8',
+      dorsal: [0.12, 0.84, [[0, 0.02], [0.15, 0.1], [0.6, 0.12], [0.9, 0.08], [1, 0.0]]],
+      anal: [0.12, 0.62, [[0, 0.02], [0.2, 0.1], [0.7, 0.11], [1, 0.0]]],
+      tail: [[0.01, 0.05], [-0.1, 0.2], [-0.17, 0.27], [-0.13, 0.13], [-0.11, 0.0], [-0.13, -0.13], [-0.17, -0.27], [-0.1, -0.2], [0.01, -0.05]],
+      eye: [0.86, 0.11],
+    },
+    0.25,
+    3,
+    0.45,
+    0.35,
+  );
+/** Sergeant major (Abudefduf saxatilis): an oval, deep body, a long spiny dorsal fin and a forked tail. */
+const SERGEANT: Profile = {
+  top: [[0, 0.07], [0.1, 0.1], [0.3, 0.24], [0.55, 0.28], [0.75, 0.25], [0.9, 0.16], [1, 0.03]],
+  bottom: [[0, -0.07], [0.1, -0.1], [0.3, -0.21], [0.55, -0.25], [0.75, -0.21], [0.9, -0.12], [1, -0.02]],
+  width: [[0, 0.02], [0.4, 0.075], [0.7, 0.075], [1, 0.012]],
+};
+export const buildSergeantMajors = () =>
+  school(
+    {
+      skin: sergeantSkin,
+      profile: SERGEANT,
+      fin: '#c9d2d6',
+      tailFin: '#c9cfa8',
+      dorsal: [0.18, 0.86, [[0, 0.05], [0.25, 0.14], [0.6, 0.1], [0.85, 0.12], [1, 0.02]]],
+      anal: [0.14, 0.5, [[0, 0.05], [0.4, 0.15], [1, 0.02]]],
+      tail: [[0.01, 0.06], [-0.12, 0.2], [-0.2, 0.25], [-0.15, 0.1], [-0.12, 0.0], [-0.15, -0.1], [-0.2, -0.25], [-0.12, -0.2], [0.01, -0.06]],
+      eye: [0.84, 0.09],
+    },
+    0.18,
+    3,
+    0.35,
+    0.45,
+  );
 
 /** Spotted eagle ray: one smooth body and wings, so the wings bend as they flap instead of hinging. */
 const RAY_SPAN = 0.66;
