@@ -73,7 +73,7 @@ function buildBackdrop() {
 }
 
 function rock(r: () => number, size: number, color: string, tex: ReefTextures) {
-  const geo = new THREE.IcosahedronGeometry(size, 2);
+  const geo = new THREE.IcosahedronGeometry(size, 4);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const v = new THREE.Vector3().fromBufferAttribute(pos, i);

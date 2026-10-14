@@ -23,6 +23,7 @@ import {
   type SpotterModel,
 } from './spotters.ts';
 import { buildLitter, buildSargassum, LITTER_PLACES, type LitterKind } from './changing3d.ts';
+import { disposeSkins, setSkinAnisotropy } from './skins.ts';
 import { loadReefTextures, texturize, type ReefTextures } from './textures.ts';
 import { disposeTree, sharedTime, sunlight, tagOrganism } from './util.ts';
 
@@ -159,6 +160,7 @@ export class ReefScene {
     this.dirLight.shadow.bias = -0.0008;
     this.scene.add(this.dirLight, this.dirLight.target);
 
+    setSkinAnisotropy(this.renderer.capabilities.getMaxAnisotropy());
     progress(0.12, 'Painting the sand and rocks…');
     this.tex = await loadReefTextures(this.renderer);
     progress(0.2, 'Shaping the seafloor…');
@@ -557,6 +559,7 @@ export class ReefScene {
     cancelAnimationFrame(this.raf);
     sunlight.value = 1;
     for (const t of Object.values(this.tex)) t?.dispose();
+    disposeSkins();
     this.resizeObserver.disconnect();
     disposeTree(this.scene);
     this.renderer.dispose();
@@ -591,9 +594,10 @@ export class ReefScene {
         if (mat && 'emissiveIntensity' in mat) {
           if (mat.userData.baseEmissive === undefined) {
             mat.userData.baseEmissive = mat.emissive.getHex();
+            mat.userData.baseEmissiveIntensity = mat.emissiveIntensity;
           }
           mat.emissive.setHex(level > 0 ? 0xffd27a : (mat.userData.baseEmissive as number));
-          mat.emissiveIntensity = level > 0 ? level : 1;
+          mat.emissiveIntensity = level > 0 ? level : (mat.userData.baseEmissiveIntensity as number);
         }
       });
     }

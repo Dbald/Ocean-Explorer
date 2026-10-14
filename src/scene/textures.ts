@@ -200,6 +200,8 @@ export function texturize(root: THREE.Object3D, map: THREE.Texture | undefined, 
     const mesh = o as THREE.Mesh;
     const mat = mesh.material as THREE.MeshStandardMaterial | undefined;
     if (!mesh.isMesh || !mat || !('roughness' in mat) || done.has(mat) || (mesh as THREE.InstancedMesh).isInstancedMesh) return;
+    // Painted skins (a turtle's shell, a fish's markings) and specially shaded parts keep their own look.
+    if (mat.map || mat.userData.noSkin) return;
     done.add(mat);
     if (map) mat.map = map;
     if (normalMap) {

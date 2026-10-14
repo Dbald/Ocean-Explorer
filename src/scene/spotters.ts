@@ -6,7 +6,8 @@
  */
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { eyes, finShape, fishBody, std } from './organisms.ts';
+import { eyes, finMat, finShape, fishBody, std } from './organisms.ts';
+import { blotches, countershade, grain, paint, scales } from './skins.ts';
 import { range, rng } from './util.ts';
 
 export interface SpotterModel {
@@ -19,14 +20,14 @@ export interface SpotterModel {
 
 const tube = (points: THREE.Vector3[], radius: number, mat: THREE.Material, tapered = true) => {
   const curve = new THREE.CatmullRomCurve3(points);
-  const geo = new THREE.TubeGeometry(curve, 24, radius, 6, false);
+  const geo = new THREE.TubeGeometry(curve, 32, radius, 12, false);
   if (tapered) {
     // Taper toward the tip.
     const pos = geo.attributes.position;
     const center = new THREE.Vector3();
     const p = new THREE.Vector3();
     for (let i = 0; i < pos.count; i++) {
-      const t = Math.floor(i / 7) / 24;
+      const t = Math.floor(i / 13) / 32;
       p.fromBufferAttribute(pos, i);
       curve.getPointAt(Math.min(1, t), center);
       p.sub(center).multiplyScalar(1 - t * 0.85).add(center);
@@ -37,39 +38,211 @@ const tube = (points: THREE.Vector3[], radius: number, mat: THREE.Material, tape
   return new THREE.Mesh(geo, mat);
 };
 
+// ── Skins ────────────────────────────────────────────────────────────────────
+
+const sharkSkin = () =>
+  paint('nurse-shark', 1024, 256, (ctx, w, h) => {
+    countershade(ctx, w, h, [
+      [0, '#6f5532'],
+      [0.45, '#9a7a4a'],
+      [0.72, '#c8ad7c'],
+      [1, '#e6d6b0'],
+    ]);
+    blotches(ctx, w, h, 7, 40, 10, 26, 'rgba(70,52,28,1)', 0.18, [0, 0, 1, 0.5]);
+    grain(ctx, w, h, 9, 0.25);
+  });
+
+const lobsterSkin = () =>
+  paint('lobster', 256, 256, (ctx, w, h) => {
+    countershade(ctx, w, h, [
+      [0, '#7a3a20'],
+      [1, '#a85a33'],
+    ]);
+    blotches(ctx, w, h, 3, 30, 10, 24, 'rgba(60,24,10,1)', 0.35);
+    // Cream spots, like the ones on a real spiny lobster's tail.
+    const r = rng(5);
+    ctx.fillStyle = '#f2d99a';
+    for (let i = 0; i < 26; i++) {
+      ctx.beginPath();
+      ctx.arc(r() * w, r() * h, 3 + r() * 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    grain(ctx, w, h, 7, 0.2);
+  });
+
+const morayLike = (key: string, base: string, dark: string, light: string, seed: number) =>
+  paint(key, 512, 128, (ctx, w, h) => {
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, w, h);
+    blotches(ctx, w, h, seed, 60, 6, 16, dark, 0.35);
+    blotches(ctx, w, h, seed + 1, 40, 4, 10, light, 0.25);
+    grain(ctx, w, h, seed + 2, 0.25);
+  });
+
+const tangSkin = () =>
+  paint('blue-tang', 256, 128, (ctx, w, h) => {
+    countershade(ctx, w, h, [
+      [0, '#1b3fae'],
+      [0.6, '#2f63de'],
+      [1, '#6d93f0'],
+    ]);
+    // Fine, wavy darker lines along the body.
+    ctx.strokeStyle = 'rgba(12,30,110,0.55)';
+    ctx.lineWidth = 1.5;
+    for (let i = 1; i < 12; i++) {
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 6) ctx.lineTo(x, (i / 12) * h + Math.sin(x * 0.09 + i) * 2.5);
+      ctx.stroke();
+    }
+    // The pale spine at the base of the tail.
+    ctx.fillStyle = '#f4f0d0';
+    ctx.beginPath();
+    ctx.ellipse(0.1 * w, 0.5 * h, 0.035 * w, 0.06 * h, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+const sergeantSkin = () =>
+  paint('sergeant-major', 256, 128, (ctx, w, h) => {
+    countershade(ctx, w, h, [
+      [0, '#e6cf3f'],
+      [0.3, '#ece27a'],
+      [0.45, '#eef0e4'],
+      [1, '#f7f8f2'],
+    ]);
+    // Five dark vertical bars.
+    ctx.fillStyle = '#1b1d22';
+    for (const x of [0.2, 0.34, 0.48, 0.62, 0.76]) {
+      ctx.beginPath();
+      ctx.moveTo((x - 0.03) * w, 0);
+      ctx.lineTo((x + 0.03) * w, 0);
+      ctx.lineTo((x + 0.022) * w, 0.9 * h);
+      ctx.lineTo((x - 0.022) * w, 0.9 * h);
+      ctx.fill();
+    }
+    scales(ctx, w, h, 8, '#000000', 0.12, 0.05, 0.85);
+  });
+
+const raySkin = () =>
+  paint('eagle-ray', 512, 512, (ctx, w, h) => {
+    // Seen from above: u runs tail to head, v across the wings.
+    const g = ctx.createRadialGradient(w * 0.55, h / 2, 10, w * 0.5, h / 2, w * 0.6);
+    g.addColorStop(0, '#273246');
+    g.addColorStop(1, '#141a26');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    // White spots and rings scattered over the back.
+    const r = rng(41);
+    for (let i = 0; i < 230; i++) {
+      const x = r() * w;
+      const y = r() * h;
+      const rad = 3 + r() * 6;
+      if (r() < 0.3) {
+        ctx.strokeStyle = 'rgba(240,244,248,0.95)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, rad + 2, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = 'rgba(240,244,248,0.95)';
+        ctx.beginPath();
+        ctx.arc(x, y, rad, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  });
+
+const cushionSkin = () =>
+  paint('cushion-star', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#d06c25';
+    ctx.fillRect(0, 0, w, h);
+    // A raised network of knobs, darker in the grooves between them.
+    const r = rng(61);
+    for (let i = 0; i < 60; i++) {
+      const x = r() * w;
+      const y = r() * h;
+      const rad = 5 + r() * 5;
+      ctx.fillStyle = 'rgba(120,52,14,0.55)';
+      ctx.beginPath();
+      ctx.arc(x, y, rad + 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f2b061';
+      ctx.beginPath();
+      ctx.arc(x, y, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    grain(ctx, w, h, 63, 0.2);
+  });
+
+const cucumberSkin = () =>
+  paint('sea-cucumber', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#6b4a2b';
+    ctx.fillRect(0, 0, w, h);
+    blotches(ctx, w, h, 71, 40, 8, 20, 'rgba(40,26,14,1)', 0.4);
+    const r = rng(73);
+    ctx.fillStyle = '#b08a5c';
+    for (let i = 0; i < 90; i++) {
+      ctx.beginPath();
+      ctx.arc(r() * w, r() * h, 1.5 + r() * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+const stingraySkin = () =>
+  paint('stingray', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#8c846f';
+    ctx.fillRect(0, 0, w, h);
+    blotches(ctx, w, h, 81, 50, 8, 22, 'rgba(70,64,52,1)', 0.25);
+    blotches(ctx, w, h, 83, 30, 6, 14, 'rgba(190,180,150,1)', 0.2);
+    grain(ctx, w, h, 85, 0.3);
+  });
+
+const shellBands = (key: string, a: string, b: string) =>
+  paint(key, 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = a;
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = b;
+    for (let i = 0; i < 12; i++) {
+      ctx.lineWidth = 4 + (i % 3) * 2;
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 8) ctx.lineTo(x, i * (h / 12) + Math.sin(x * 0.06 + i) * 4);
+      ctx.stroke();
+    }
+    grain(ctx, w, h, 91, 0.25);
+  });
+
+// ── Animals ──────────────────────────────────────────────────────────────────
+
 export function buildNurseShark(): SpotterModel {
   const g = new THREE.Group();
-  const skin = std('#a8875a', { roughness: 0.8 });
+  const skin = std('#ffffff', { map: sharkSkin(), roughness: 0.8 });
   const L = 1.6;
-  const body = new THREE.Mesh(fishBody(L, 0.26, 0.32, 0.38, 0.32), skin);
+  const body = new THREE.Mesh(fishBody(L, 0.26, 0.32, 0.38, 0.3, { stations: 56, squashTail: 0.45 }), skin);
   body.scale.y = 0.85;
   g.add(body);
-  const belly = new THREE.Mesh(fishBody(L * 0.75, 0.1, 0.28, 0.4, 0.35), std('#d9c49a', { roughness: 0.8 }));
-  belly.position.set(0.05, -0.07, 0);
-  g.add(belly);
-  const finMat = std('#94764c', { side: THREE.DoubleSide, roughness: 0.8 });
-  // Two rounded dorsal fins set far back, a long upper tail lobe, and broad pectoral fins.
-  const d1 = new THREE.Mesh(finShape([[0, 0.08], [0.16, 0.08], [0.02, 0.24]]), finMat);
+  // Shark fins have no rays: plain skin colour, rounded.
+  const finSkin = std('#8a6c44', { side: THREE.DoubleSide, roughness: 0.8 });
+  const d1 = new THREE.Mesh(finShape([[0, 0.08], [0.17, 0.08], [0.06, 0.25], [0.0, 0.23]]), finSkin);
   d1.position.x = -0.25;
   g.add(d1);
-  const d2 = new THREE.Mesh(finShape([[0, 0.06], [0.12, 0.06], [0.0, 0.17]]), finMat);
+  const d2 = new THREE.Mesh(finShape([[0, 0.06], [0.13, 0.06], [0.03, 0.18], [-0.01, 0.16]]), finSkin);
   d2.position.x = -0.52;
   g.add(d2);
   const tail = new THREE.Group();
-  tail.add(new THREE.Mesh(finShape([[0, 0.02], [-0.42, 0.06], [-0.4, -0.02], [0, -0.06]]), finMat));
+  // Long upper lobe and almost no lower lobe, as in nurse sharks.
+  tail.add(new THREE.Mesh(finShape([[0.02, 0.035], [-0.3, 0.05], [-0.46, 0.025], [-0.44, -0.005], [-0.12, -0.05], [0.02, -0.04]], 'back'), finSkin));
   tail.position.set(-L * 0.48, 0, 0);
   g.add(tail);
   for (const side of [1, -1]) {
-    const pec = new THREE.Mesh(new THREE.SphereGeometry(0.5, 12, 6), finMat);
-    pec.scale.set(0.16, 0.02, 0.2);
-    pec.position.set(0.3, -0.08, side * 0.2);
-    pec.rotation.y = side * -0.5;
+    const pec = new THREE.Mesh(finShape([[0, 0], [-0.08, 0.02], [-0.2, -0.02], [-0.16, -0.08], [-0.02, -0.04]], 'back'), finSkin);
+    pec.rotation.x = side * Math.PI * 0.42;
+    pec.position.set(0.32, -0.08, side * 0.13);
     g.add(pec);
-    const barbel = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.004, 0.06, 5), skin);
+    const barbel = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.004, 0.07, 6), skin);
     barbel.position.set(L * 0.49, -0.05, side * 0.03);
+    barbel.rotation.z = 0.4;
     g.add(barbel);
   }
-  eyes(g, L * 0.38, 0.04, 0.09, 0.012);
+  eyes(g, L * 0.38, 0.04, 0.085, 0.013, '#b9a46a');
   return {
     group: g,
     // Resting: just a slow sway of the tail.
@@ -80,25 +253,26 @@ export function buildNurseShark(): SpotterModel {
 
 export function buildSpinyLobster(): SpotterModel {
   const g = new THREE.Group();
-  const shell = std('#9a4b2c', { roughness: 0.6 });
+  const shell = std('#ffffff', { map: lobsterSkin(), roughness: 0.55 });
+  const leg = std('#a0552f', { roughness: 0.6 });
   const pale = std('#e8c27a', { roughness: 0.6 });
   // Carapace and segmented tail along +x (head forward).
-  const cara = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 10), shell);
+  const cara = new THREE.Mesh(new THREE.SphereGeometry(0.07, 24, 16), shell);
   cara.scale.set(1.5, 0.8, 0.9);
   cara.position.x = 0.06;
   g.add(cara);
   for (let i = 0; i < 5; i++) {
-    const seg = new THREE.Mesh(new THREE.SphereGeometry(0.055 - i * 0.006, 12, 8), i % 2 ? pale : shell);
+    const seg = new THREE.Mesh(new THREE.SphereGeometry(0.055 - i * 0.006, 18, 12), shell);
     seg.scale.set(0.7, 0.6, 1);
     seg.position.set(-0.04 - i * 0.045, -0.005, 0);
     g.add(seg);
   }
-  const fan = new THREE.Mesh(finShape([[0, 0], [-0.07, 0.05], [-0.08, -0.05]]), shell);
+  const fan = new THREE.Mesh(finShape([[0, 0.01], [-0.07, 0.055], [-0.085, 0], [-0.07, -0.055], [0, -0.01]], 'back'), finMat('#b0623a'));
   fan.rotation.x = -Math.PI / 2;
-  fan.position.set(-0.26, -0.01, 0);
+  fan.position.set(-0.25, -0.01, 0);
   g.add(fan);
   for (let i = 0; i < 6; i++) {
-    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.03, 5), pale);
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.03, 6), pale);
     spike.position.set(0.02 + (i % 3) * 0.04, 0.05, i < 3 ? 0.03 : -0.03);
     g.add(spike);
   }
@@ -108,18 +282,16 @@ export function buildSpinyLobster(): SpotterModel {
     const a = tube(
       [new THREE.Vector3(0.15, 0.02, side * 0.03), new THREE.Vector3(0.3, 0.08, side * 0.12), new THREE.Vector3(0.48, 0.07, side * 0.25), new THREE.Vector3(0.6, 0.02, side * 0.36)],
       0.012,
-      shell,
+      std('#ffffff', { map: lobsterSkin(), roughness: 0.55 }),
     );
     g.add(a);
     antennae.push(a);
     for (let k = 0; k < 4; k++) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.004, 0.09, 5), shell);
-      leg.position.set(0.06 - k * 0.035, -0.04, side * 0.06);
-      leg.rotation.x = side * 0.9;
-      g.add(leg);
+      const l = tube([new THREE.Vector3(0.06 - k * 0.035, -0.02, side * 0.05), new THREE.Vector3(0.07 - k * 0.035, -0.04, side * 0.1), new THREE.Vector3(0.08 - k * 0.035, -0.07, side * 0.12)], 0.006, leg);
+      g.add(l);
     }
   }
-  eyes(g, 0.15, 0.03, 0.025, 0.01);
+  eyes(g, 0.15, 0.03, 0.025, 0.01, '#222222');
   return {
     group: g,
     animate: (t) => antennae.forEach((a, i) => (a.rotation.y = Math.sin(t * 0.9 + i * 1.7) * 0.08)),
@@ -130,17 +302,17 @@ export function buildSpinyLobster(): SpotterModel {
 export function buildSeaUrchin(): SpotterModel {
   const g = new THREE.Group();
   const black = std('#16141c', { roughness: 0.4 });
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), black);
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.07, 20, 14), black);
   body.scale.y = 0.75;
   body.position.y = 0.05;
   g.add(body);
   const spikes: THREE.BufferGeometry[] = [];
   const r = rng(77);
   const up = new THREE.Vector3(0, 1, 0);
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 90; i++) {
     const dir = new THREE.Vector3(range(r, -1, 1), range(r, -0.15, 1), range(r, -1, 1)).normalize();
-    const len = range(r, 0.16, 0.26);
-    const cone = new THREE.ConeGeometry(0.004, len, 4);
+    const len = range(r, 0.16, 0.28);
+    const cone = new THREE.ConeGeometry(0.004, len, 5);
     cone.translate(0, len / 2, 0);
     cone.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up, dir));
     cone.translate(0, 0.05, 0);
@@ -157,7 +329,7 @@ export function buildSeaUrchin(): SpotterModel {
 
 export function buildGreenMoray(): SpotterModel {
   const g = new THREE.Group();
-  const skin = std('#5d7a2a', { roughness: 0.45, emissive: '#0d1404' });
+  const skin = std('#ffffff', { map: morayLike('moray', '#5f7d2a', 'rgba(36,52,14,1)', 'rgba(170,190,80,1)', 101), roughness: 0.35, emissive: '#0d1404' });
   // Body curving out of the rock (along +z toward the viewer), head at the end.
   const body = tube(
     [new THREE.Vector3(0, 0.02, -0.35), new THREE.Vector3(0, 0.08, -0.15), new THREE.Vector3(0.02, 0.16, 0.02), new THREE.Vector3(0.05, 0.2, 0.12)],
@@ -168,19 +340,23 @@ export function buildGreenMoray(): SpotterModel {
   g.add(body);
   const head = new THREE.Group();
   head.position.set(0.05, 0.2, 0.12);
-  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 10), skin);
+  const skull = new THREE.Mesh(new THREE.SphereGeometry(0.06, 22, 16), skin);
   skull.scale.set(0.8, 0.85, 1.6);
   head.add(skull);
-  const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 8), skin);
+  const jaw = new THREE.Mesh(new THREE.SphereGeometry(0.05, 18, 12), skin);
   jaw.scale.set(0.75, 0.4, 1.5);
   jaw.position.set(0, -0.035, 0.02);
   head.add(jaw);
-  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 6), std('#2a1418'));
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(0.035, 14, 8), std('#2a1418'));
   mouth.scale.set(0.7, 0.2, 1.6);
   mouth.position.set(0, -0.02, 0.04);
   head.add(mouth);
-  eyes(head, 0.0, 0.03, 0.04, 0.009);
-  head.children.slice(-2).forEach((e) => (e.position.set(e.position.z > 0 ? 0.04 : -0.04, 0.03, 0.04)));
+  // Eyes on the sides of the head, looking forward.
+  const eyeHolder = new THREE.Group();
+  eyes(eyeHolder, 0.0, 0.0, 0.042, 0.01, '#c9b23a');
+  eyeHolder.rotation.y = Math.PI / 2;
+  eyeHolder.position.set(0, 0.03, 0.04);
+  head.add(eyeHolder);
   g.add(head);
   return {
     group: g,
@@ -192,18 +368,19 @@ export function buildGreenMoray(): SpotterModel {
 
 export function buildOctopus(): SpotterModel {
   const g = new THREE.Group();
-  const calm = new THREE.Color('#4f9a8f');
-  const flushed = new THREE.Color('#b8562e');
-  const mat = std(calm.clone(), { roughness: 0.55 });
-  const mantle = new THREE.Mesh(new THREE.SphereGeometry(0.08, 18, 12), mat);
+  const calm = new THREE.Color('#5aa597');
+  const flushed = new THREE.Color('#c4602f');
+  // A pale, mottled skin tinted by the material colour, so the colour change still works.
+  const mat = std(calm.clone(), { map: morayLike('octopus', '#f2f2ea', 'rgba(90,70,60,1)', 'rgba(255,255,255,1)', 111), roughness: 0.5 });
+  const mantle = new THREE.Mesh(new THREE.SphereGeometry(0.08, 24, 18), mat);
   mantle.scale.set(1, 1.3, 1);
   mantle.position.set(-0.03, 0.12, 0);
   mantle.rotation.z = 0.4;
   g.add(mantle);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 10), mat);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 14), mat);
   head.position.set(0.02, 0.06, 0);
   g.add(head);
-  eyes(g, 0.05, 0.09, 0.04, 0.012);
+  eyes(g, 0.05, 0.09, 0.045, 0.013, '#e0c060');
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2;
     const c = Math.cos(a);
@@ -228,44 +405,41 @@ export function buildOctopus(): SpotterModel {
   };
 }
 
-function smallFish(color: string, length: number, height: number, stripes?: string): { group: THREE.Group; tail: THREE.Object3D } {
+interface FishSpec {
+  skin: () => THREE.Texture | null;
+  fin: string;
+  tailFin: string;
+  /** Continuous dorsal and anal fins (tangs) or a spiny dorsal (damselfish). */
+  tall?: boolean;
+}
+
+function smallFish(spec: FishSpec, length: number, height: number): { group: THREE.Group; tail: THREE.Object3D } {
   const g = new THREE.Group();
-  const geo = fishBody(length, height, height * 0.35, 0.5, 0.4);
-  let mat: THREE.MeshStandardMaterial;
-  if (stripes) {
-    // Paint vertical stripes with vertex colors (sergeant major).
-    const pos = geo.attributes.position;
-    const colors = new Float32Array(pos.count * 3);
-    const base = new THREE.Color(color);
-    const band = new THREE.Color(stripes);
-    const top = new THREE.Color('#e9d84a');
-    const c = new THREE.Color();
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i) / length;
-      const y = pos.getY(i) / height;
-      const striped = x < 0.32 && x > -0.4 && Math.sin((x + 0.5) * Math.PI * 9) > 0.55;
-      c.copy(striped ? band : base);
-      if (!striped && y > 0.15) c.lerp(top, 0.7);
-      colors.set([c.r, c.g, c.b], i * 3);
-    }
-    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45 });
-  } else {
-    mat = std(color, { roughness: 0.35 });
+  g.add(new THREE.Mesh(fishBody(length, height, height * 0.36, 0.5, 0.36), std('#ffffff', { map: spec.skin(), roughness: 0.38 })));
+  const L = length;
+  const H = height;
+  const fin = finMat(spec.fin);
+  const dTop = spec.tall ? 0.78 : 0.68;
+  g.add(new THREE.Mesh(finShape([[-L * 0.32, H * 0.3], [L * 0.22, H * 0.42], [L * 0.1, H * dTop], [-L * 0.25, H * 0.62], [-L * 0.36, H * 0.42]]), fin));
+  g.add(new THREE.Mesh(finShape([[-L * 0.32, -H * 0.3], [L * 0.02, -H * 0.4], [-L * 0.08, -H * (dTop - 0.05)], [-L * 0.3, -H * 0.55]], 'down'), fin));
+  for (const s of [1, -1]) {
+    const pec = new THREE.Mesh(finShape([[0, 0], [-L * 0.18, H * 0.12], [-L * 0.2, -H * 0.05]], 'back'), finMat(spec.fin, { opacity: 0.8 }));
+    pec.position.set(L * 0.18, -H * 0.05, s * H * 0.17);
+    pec.rotation.y = s * 0.5;
+    g.add(pec);
   }
-  g.add(new THREE.Mesh(geo, mat));
   const tail = new THREE.Group();
-  tail.add(new THREE.Mesh(finShape([[0, 0], [-length * 0.3, height * 0.45], [-length * 0.22, 0], [-length * 0.3, -height * 0.45]]), std(stripes ? '#e9d84a' : color, { side: THREE.DoubleSide })));
-  tail.position.x = -length * 0.47;
+  tail.add(new THREE.Mesh(finShape([[0, H * 0.06], [-L * 0.3, H * 0.45], [-L * 0.24, 0], [-L * 0.3, -H * 0.45], [0, -H * 0.06]], 'back'), finMat(spec.tailFin)));
+  tail.position.x = -L * 0.47;
   g.add(tail);
-  eyes(g, length * 0.32, height * 0.12, height * 0.16, length * 0.035);
+  eyes(g, L * 0.33, H * 0.12, H * 0.15, L * 0.04);
   return { group: g, tail };
 }
 
 /** A small group of fish swimming a slow loop around their own centre. */
-function school(color: string, length: number, height: number, count: number, radius: number, speed: number, stripes?: string): SpotterModel {
+function school(spec: FishSpec, length: number, height: number, count: number, radius: number, speed: number): SpotterModel {
   const g = new THREE.Group();
-  const fish = Array.from({ length: count }, () => smallFish(color, length, height, stripes));
+  const fish = Array.from({ length: count }, () => smallFish(spec, length, height));
   fish.forEach((f) => g.add(f.group));
   const place = (t: number) =>
     fish.forEach((f, i) => {
@@ -278,66 +452,113 @@ function school(color: string, length: number, height: number, count: number, ra
   return { group: g, animate: place, react: (p) => fish.forEach((f) => (f.tail.rotation.y = Math.sin(p * 40) * 0.6)) };
 }
 
-export const buildBlueTangs = () => school('#2357d8', 0.25, 0.17, 3, 0.45, 0.35);
-export const buildSergeantMajors = () => school('#f4f1df', 0.18, 0.12, 3, 0.35, 0.45, '#1b1d22');
+export const buildBlueTangs = () => school({ skin: tangSkin, fin: '#2d5fd8', tailFin: '#2a55c8', tall: true }, 0.25, 0.17, 3, 0.45, 0.35);
+export const buildSergeantMajors = () => school({ skin: sergeantSkin, fin: '#d8d3a8', tailFin: '#d9cf8a' }, 0.18, 0.12, 3, 0.35, 0.45);
+
+/** Spotted eagle ray: one smooth body and wings, so the wings bend as they flap instead of hinging. */
+const RAY_SPAN = 0.66;
+
+function rayDisc(top: boolean) {
+  const NS = 32;
+  const NC = 16;
+  const pos: number[] = [];
+  const idx: number[] = [];
+  for (let i = 0; i <= NS; i++) {
+    const zf = -1 + (2 * i) / NS;
+    const a = Math.abs(zf);
+    const chord = 0.52 * Math.pow(1 - a, 0.75) + 0.012;
+    // Wings sweep back toward pointed tips.
+    const xm = 0.02 - 0.14 * Math.pow(a, 1.1);
+    const thick = 0.075 * Math.pow(1 - a, 1.6) + 0.003;
+    for (let j = 0; j <= NC; j++) {
+      const f = j / NC;
+      const x = xm + chord / 2 - f * chord;
+      const y = (top ? 1 : -0.45) * thick * Math.pow(Math.sin(Math.PI * f), 0.7);
+      pos.push(x, y, zf * RAY_SPAN);
+    }
+  }
+  for (let i = 0; i < NS; i++)
+    for (let j = 0; j < NC; j++) {
+      const a = i * (NC + 1) + j;
+      const b = a + NC + 1;
+      if (top) idx.push(a, a + 1, b, b, a + 1, b + 1);
+      else idx.push(a, b, a + 1, b, b + 1, a + 1);
+    }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeBoundingBox();
+  const bb = g.boundingBox!;
+  const uv: number[] = [];
+  for (let k = 0; k < pos.length; k += 3) uv.push((pos[k] - bb.min.x) / (bb.max.x - bb.min.x), (pos[k + 2] - bb.min.z) / (bb.max.z - bb.min.z));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeVertexNormals();
+  return g;
+}
+
+/** Bends the wings up and down in the vertex shader, with matching normals for lighting. */
+function flapping(mat: THREE.MeshStandardMaterial, flap: { value: number }) {
+  mat.userData.noSkin = true;
+  mat.customProgramCacheKey = () => 'eagle-ray-flap';
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uFlap = flap;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\nuniform float uFlap;`)
+      .replace(
+        '#include <beginnormal_vertex>',
+        `#include <beginnormal_vertex>
+float oeA0 = clamp(abs(position.z) / ${RAY_SPAN.toFixed(2)}, 0.0, 1.0);
+objectNormal.z -= sign(position.z) * uFlap * 0.32 * 1.7 * pow(oeA0, 0.7) / ${RAY_SPAN.toFixed(2)} * objectNormal.y;`,
+      )
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+float oeA = clamp(abs(transformed.z) / ${RAY_SPAN.toFixed(2)}, 0.0, 1.0);
+transformed.y += uFlap * pow(oeA, 1.7) * 0.32;
+transformed.z *= 1.0 - abs(uFlap) * pow(oeA, 2.0) * 0.06;`,
+      );
+  };
+  return mat;
+}
 
 export function buildEagleRay(): SpotterModel {
   const g = new THREE.Group();
-  const top = std('#262e3a', { roughness: 0.5, side: THREE.DoubleSide });
-  const spotMat = std('#f2f4f6');
-  const body = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 10), top);
-  body.scale.set(1.6, 0.45, 0.8);
-  g.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 8), top);
-  head.scale.set(1.4, 0.6, 0.9);
-  head.position.x = 0.2;
+  const flap = { value: 0 };
+  const top = new THREE.Mesh(rayDisc(true), flapping(std('#ffffff', { map: raySkin(), roughness: 0.45 }), flap));
+  const belly = new THREE.Mesh(rayDisc(false), flapping(std('#eef1f2', { roughness: 0.6 }), flap));
+  g.add(top, belly);
+  // A domed head and the flat, duck-bill snout.
+  const dark = std('#1d2433', { roughness: 0.45 });
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.075, 24, 16), dark);
+  head.scale.set(1.25, 0.6, 0.95);
+  head.position.set(0.26, 0.015, 0);
   g.add(head);
-  const wings: THREE.Group[] = [];
-  for (const side of [1, -1]) {
-    const pivot = new THREE.Group();
-    const wing = new THREE.Mesh(finShape([[0.15, 0], [-0.05, side * 0.62], [-0.12, side * 0.5], [-0.12, 0]]), top);
-    wing.rotation.x = -Math.PI / 2;
-    pivot.add(wing);
-    // White spots on the back.
-    for (let i = 0; i < 6; i++) {
-      const spot = new THREE.Mesh(new THREE.CircleGeometry(0.018, 8), spotMat);
-      spot.rotation.x = -Math.PI / 2;
-      spot.position.set(0.06 - (i % 3) * 0.06, 0.004, side * (0.12 + Math.floor(i / 3) * 0.16 + (i % 3) * 0.04));
-      pivot.add(spot);
-    }
-    g.add(pivot);
-    wings.push(pivot);
-  }
-  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.002, 1.1, 5), top);
-  tail.rotation.z = Math.PI / 2;
-  tail.position.x = -0.68;
-  g.add(tail);
-  eyes(g, 0.22, 0.02, 0.06, 0.012);
-  const flap = (t: number, amount: number) => wings.forEach((w, i) => (w.rotation.x = (i === 0 ? -1 : 1) * Math.sin(t) * amount));
-  return { group: g, animate: (t) => flap(t * 1.6, 0.3), react: (p) => flap(p * Math.PI * 6, 0.55) };
+  const snout = new THREE.Mesh(new THREE.SphereGeometry(0.05, 20, 12), dark);
+  snout.scale.set(1.5, 0.42, 0.9);
+  snout.position.set(0.34, -0.002, 0);
+  g.add(snout);
+  eyes(g, 0.27, 0.035, 0.062, 0.013, '#c8b070');
+  // Long, thin, whip-like tail.
+  g.add(tube([new THREE.Vector3(-0.22, 0, 0), new THREE.Vector3(-0.6, 0.015, 0.01), new THREE.Vector3(-1.0, 0.0, 0.05), new THREE.Vector3(-1.45, -0.03, 0.09)], 0.012, dark));
+  const flapAt = (phase: number, amount: number) => (flap.value = Math.sin(phase) * amount);
+  return { group: g, animate: (t) => flapAt(t * 1.6, 0.55), react: (p) => flapAt(p * Math.PI * 6, 1) };
 }
 
 export function buildCushionStar(): SpotterModel {
   const g = new THREE.Group();
-  const orange = std('#d9762b', { roughness: 0.75 });
-  const knob = std('#f1b05a', { roughness: 0.7 });
-  const center = new THREE.Mesh(new THREE.SphereGeometry(0.1, 18, 10), orange);
+  const orange = std('#ffffff', { map: cushionSkin(), roughness: 0.7 });
+  const center = new THREE.Mesh(new THREE.SphereGeometry(0.1, 28, 16), orange);
   center.scale.set(1, 0.5, 1);
   center.position.y = 0.03;
   g.add(center);
   for (let i = 0; i < 5; i++) {
     const a = (i / 5) * Math.PI * 2;
-    const arm = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.2, 12), orange);
-    arm.rotation.z = -Math.PI / 2;
+    // Short, thick arms that blend into the puffy centre.
+    const arm = new THREE.Mesh(new THREE.SphereGeometry(0.07, 20, 12), orange);
+    arm.scale.set(1.9, 0.55, 0.85);
+    arm.position.x = 0.12;
     const holder = new THREE.Group();
-    arm.position.x = 0.15;
-    arm.scale.set(1, 1, 0.55);
     holder.add(arm);
-    for (let k = 0; k < 3; k++) {
-      const bump = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), knob);
-      bump.position.set(0.08 + k * 0.05, 0.035 - k * 0.006, 0);
-      holder.add(bump);
-    }
     holder.rotation.y = a;
     holder.position.y = 0.02;
     g.add(holder);
@@ -347,19 +568,20 @@ export function buildCushionStar(): SpotterModel {
 
 export function buildSeaCucumber(): SpotterModel {
   const g = new THREE.Group();
-  const brown = std('#6b4a2b', { roughness: 0.85 });
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.28, 6, 12), brown);
+  const brown = std('#ffffff', { map: cucumberSkin(), roughness: 0.8 });
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, 0.28, 8, 18), brown);
   body.rotation.z = Math.PI / 2;
   body.scale.set(1, 1, 0.8);
   body.position.y = 0.04;
   g.add(body);
   const bumpMat = std('#8a6640', { roughness: 0.9 });
   const r = rng(91);
-  for (let i = 0; i < 18; i++) {
-    const b = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), bumpMat);
+  for (let i = 0; i < 22; i++) {
+    const b = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.02, 6), bumpMat);
     const x = range(r, -0.16, 0.16);
     const a = range(r, -1.2, 1.2);
     b.position.set(x, 0.04 + Math.cos(a) * 0.045, Math.sin(a) * 0.04);
+    b.rotation.x = a;
     g.add(b);
   }
   return {
@@ -371,9 +593,9 @@ export function buildSeaCucumber(): SpotterModel {
 
 export function buildStingray(sandColor: string): SpotterModel {
   const g = new THREE.Group();
-  const top = std('#8f8775', { roughness: 0.9 });
+  const top = std('#ffffff', { map: stingraySkin(), roughness: 0.85 });
   // A soft, domed diamond: a flattened sphere pulled out toward four points.
-  const geo = new THREE.SphereGeometry(0.5, 40, 14);
+  const geo = new THREE.SphereGeometry(0.5, 48, 18);
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
@@ -388,16 +610,14 @@ export function buildStingray(sandColor: string): SpotterModel {
   holder.add(disc);
   g.add(holder);
   // Bumpy eyes on top — the part you can still see when it hides in the sand.
-  eyes(g, 0.14, 0.07, 0.05, 0.017);
-  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.002, 0.5, 5), top);
-  tail.rotation.z = Math.PI / 2;
-  tail.position.set(-0.52, 0.02, 0);
+  eyes(g, 0.14, 0.07, 0.05, 0.017, '#a39662');
+  const tail = tube([new THREE.Vector3(-0.3, 0.02, 0), new THREE.Vector3(-0.55, 0.02, 0.02), new THREE.Vector3(-0.8, 0.015, 0.05)], 0.012, std('#6f6858'));
   g.add(tail);
   // A light dusting of sand over the edges of its fins.
   const sand = std(sandColor, { roughness: 1 });
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2 + 0.3;
-    const drift = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 6), sand);
+    const drift = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 8), sand);
     drift.scale.set(1.5, 0.22, 0.9);
     drift.position.set(Math.cos(a) * 0.22, 0.02, Math.sin(a) * 0.26);
     g.add(drift);
@@ -407,30 +627,31 @@ export function buildStingray(sandColor: string): SpotterModel {
 
 export function buildHermitCrab(): SpotterModel {
   const g = new THREE.Group();
-  const shellMat = std('#c9a36a', { roughness: 0.6 });
-  const shell = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.11, 14), shellMat);
+  const shellMat = std('#ffffff', { map: shellBands('hermit-shell', '#cfae78', 'rgba(140,96,56,0.6)'), roughness: 0.55 });
+  // A coiled snail shell: a cone for the spire and a fat body whorl.
+  const shell = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.11, 24), shellMat);
   shell.rotation.z = Math.PI / 2 + 0.3;
-  shell.position.set(-0.02, 0.05, 0);
+  shell.position.set(-0.03, 0.05, 0);
   g.add(shell);
-  const whorl = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.014, 8, 16), shellMat);
-  whorl.position.set(0.03, 0.05, 0);
-  whorl.rotation.y = Math.PI / 2;
+  const whorl = new THREE.Mesh(new THREE.SphereGeometry(0.048, 22, 16), shellMat);
+  whorl.scale.set(0.9, 0.85, 0.9);
+  whorl.position.set(0.02, 0.045, 0);
   g.add(whorl);
   const crab = new THREE.Group();
-  const red = std('#c23b22', { roughness: 0.5 });
-  const claw = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), red);
+  const red = std('#c23b22', { roughness: 0.45 });
+  const claw = new THREE.Mesh(new THREE.SphereGeometry(0.02, 14, 10), red);
   claw.scale.set(1.4, 0.8, 1);
   claw.position.set(0.075, 0.03, 0.02);
   crab.add(claw);
   for (const side of [1, -1]) {
-    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.005, 0.06, 5), red);
-    leg.position.set(0.06, 0.015, side * 0.03);
-    leg.rotation.x = side * 0.8;
-    crab.add(leg);
-    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.03, 4), red);
+    for (let k = 0; k < 2; k++) {
+      const leg = tube([new THREE.Vector3(0.06, 0.03, side * 0.02), new THREE.Vector3(0.07 + k * 0.01, 0.03, side * (0.045 + k * 0.01)), new THREE.Vector3(0.08 + k * 0.012, 0.0, side * (0.06 + k * 0.012))], 0.005, red);
+      crab.add(leg);
+    }
+    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.03, 6), red);
     stalk.position.set(0.07, 0.06, side * 0.012);
     crab.add(stalk);
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.006, 6, 4), std('#111'));
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.0065, 10, 8), std('#111', { roughness: 0.15 }));
     eye.position.set(0.07, 0.077, side * 0.012);
     crab.add(eye);
   }
