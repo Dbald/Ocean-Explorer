@@ -6,17 +6,20 @@ import { Ambience, Narrator, type NarrationState } from './audio/narrator.ts';
 import { foodRelationshipById } from './content/food.ts';
 import { habitatById } from './content/habitats.ts';
 import { COMPOSITE_NOTICE, GUIDING_QUESTION, LESSON_TITLE, OBJECTIVE, PRODUCT_NAME, connectItems, exitQuestions, stepById, steps, videoSegments } from './content/lesson.ts';
-import { findNarrationId, spotterNarrationId } from './content/findables.ts';
+import { CHANGING_QUESTION, CHANGING_TITLE, beltSnapshots, isLitterId, litterById, stepsFor, type CauseId, type ChangingLevel } from './content/changing.ts';
+import { findNarrationId, findableById, spotterNarrationId } from './content/findables.ts';
 import { narrationById } from './content/narration.ts';
 import { recordedAudioFor } from './content/recordings.ts';
 import { organismById, organisms } from './content/organisms.ts';
 import type { HabitatId, StepId, VideoSegment } from './content/types.ts';
 import { currentFindTarget, initialState, reduce, type Action, type LessonState, type Mode } from './lesson/controller.ts';
 import { clearAll, loadPreferences, loadSession, savePreferences, saveSession, type Preferences } from './lesson/store.ts';
+import { MapView } from './scene/MapView.ts';
 import { ReefScene, webglAvailable, type Viewpoint } from './scene/ReefScene.ts';
 import { StaticScene } from './scene/StaticScene.ts';
 import { renderGuide, renderTranscript, SHORTCUTS } from './ui/guide.ts';
 import { btn, esc } from './ui/html.ts';
+import { changingStep, mapStateFor, remainingLitter, renderChangingDock } from './ui/changingViews.ts';
 import { findOrder, renderCard, renderExploreDock, renderFindDock, renderLessonDock } from './ui/views.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -36,6 +39,7 @@ export class App {
   private muted = false;
   private scene3d: ReefScene | null = null;
   private staticScene: StaticScene | null = null;
+  private mapView: MapView | null = null;
   private lastView: Viewpoint | null = null;
   private narrator: Narrator;
   private ambience = new Ambience();
@@ -77,6 +81,7 @@ export class App {
   init() {
     this.applyPrefs();
     this.bindEvents();
+    this.mapView = new MapView($('stage'));
     new ResizeObserver(() => this.updateInsets()).observe($('dock'));
     window.addEventListener('resize', () => this.updateInsets());
     this.renderAll();
@@ -125,13 +130,31 @@ export class App {
     // Narration follows what changed, unless paused or turned off.
     if (s.mode === 'lesson' && stepChanged) this.narrate(stepById.get(s.step)!.narrationId);
     else if (s.mode === 'explore' && action.type === 'start') this.narrate(habitatById.get(s.stop)!.narrationId);
-    if (action.type === 'visitStop' && prev.stop !== s.stop) this.narrate(habitatById.get(s.stop)!.narrationId);
+    if (action.type === 'visitStop' && prev.stop !== s.stop && s.mode !== 'changing') this.narrate(habitatById.get(s.stop)!.narrationId);
     if (action.type === 'selectOrganism' && action.id) {
       this.narrate(organismById.get(action.id)?.narrationId ?? spotterNarrationId(action.id));
     }
 
-    if (stepChanged && s.mode !== null) this.focusKey('instruction');
+    if (s.mode === 'changing') this.narrateChanging(prev, action);
+
+    const chStepChanged = s.mode === 'changing' && (prev.mode !== 'changing' || prev.changing.step !== s.changing.step);
+    if ((stepChanged || chStepChanged) && s.mode !== null) this.focusKey('instruction');
     if (action.type === 'selectOrganism' && action.id) this.focusKey('card-title');
+  }
+
+  /** Expedition 2 narration: each step, each year on the map, the research reveal. */
+  private narrateChanging(prev: LessonState, action: Action) {
+    const s = this.state;
+    const c = s.changing;
+    const stepChanged = prev.mode !== 'changing' || prev.changing.step !== c.step || action.type === 'startChanging';
+    if (stepChanged) {
+      const step = changingStep(s);
+      return this.narrateSequence(step.kind === 'recap' && c.level === 'older' ? [step.narrationId, 'ch-beyond'] : [step.narrationId]);
+    }
+    if (action.type === 'chBelt' && prev.changing.belt !== c.belt) this.narrate(beltSnapshots[c.belt].narrationId);
+    if (action.type === 'chReveal' && c.revealed && !prev.changing.revealed) this.narrate('ch-causes-reveal');
+    if (action.type === 'chHelper') this.narrate(`ch-help-${action.id}`);
+    if (action.type === 'chSargassum' && action.on && !prev.changing.sargassumSeen && c.level === 'older') this.narrate('ch-twist');
   }
 
   private narrate(id: string, force = false) {
@@ -158,10 +181,38 @@ export class App {
 
   /** A tap on an animal in the scene: it always says hello; in the game it is also a guess. */
   private onTap(id: string) {
+    if (isLitterId(id)) return this.cleanLitter(id);
     this.scene3d?.react(id);
     if (this.state.mode === 'find') return this.findTap(id);
+    // In Expedition 2 animals still say hello, without opening a card over the activity.
+    if (this.state.mode === 'changing') return this.narrate(findableById.has(id) ? spotterNarrationId(id) : (organismById.get(id)?.narrationId ?? ''), true);
     this.returnFocus = null;
     this.dispatch({ type: 'selectOrganism', id });
+  }
+
+  /** Picking up a piece of trash: it floats away and its fact is read aloud. */
+  private cleanLitter(id: string) {
+    const s = this.state;
+    const kind = changingStep(s).kind;
+    if (s.mode !== 'changing' || (kind !== 'reef' && kind !== 'cleanup') || s.changing.cleaned.includes(id)) return;
+    this.dispatch({ type: 'chClean', id });
+    const item = litterById.get(id)!;
+    const left = remainingLitter(this.state);
+    const lines = [`ch-litter-${item.kind}`];
+    if (!left.length) lines.push('ch-little-thanks');
+    else if (s.changing.level === 'little' && !left.some((l) => litterById.get(l)!.stop === item.stop)) lines.push('ch-little-clean-stop');
+    this.narrateSequence(lines);
+  }
+
+  private startChanging(level: ChangingLevel) {
+    this.paused = false;
+    this.resumable = null;
+    this.startAudio();
+    this.dispatch({ type: 'startChanging', level });
+  }
+
+  private changingNav(delta: number) {
+    this.dispatch({ type: 'chGoto', step: this.state.changing.step + delta });
   }
 
   // ── "Can you find…?" ───────────────────────────────────────────────────────
@@ -293,6 +344,10 @@ export class App {
     const s = this.state;
     const at = (stop: HabitatId): SceneTarget => ({ view: stop, stop, shelter: null });
     if (s.mode === 'explore' || s.mode === 'find') return at(s.stop);
+    if (s.mode === 'changing') {
+      const kind = changingStep(s).kind;
+      return at(kind === 'reef' || kind === 'cleanup' || kind === 'seaweed' ? s.stop : 'reef');
+    }
     if (s.mode !== 'lesson') return at('reef');
     switch (s.step) {
       case 'explore':
@@ -328,13 +383,26 @@ export class App {
       this.scene3d.setShelterView(t.shelter);
       this.scene3d.setSelected(this.state.selectedOrganism);
     }
+    // Expedition 2 layers: sargassum mats, trash to clean up, and the map of the belt.
+    const s = this.state;
+    const kind = s.mode === 'changing' ? changingStep(s).kind : null;
+    const sargassum = (kind === 'reef' || kind === 'seaweed') && s.changing.sargassum;
+    const litter = kind === 'reef' || kind === 'cleanup' ? remainingLitter(s) : null;
+    this.scene3d?.setSargassum(sargassum);
+    this.scene3d?.setLitter(litter);
     this.staticScene?.render({
       stop: t.stop,
       selected: this.state.selectedOrganism,
       shelterView: t.shelter,
       labels: this.state.mode !== 'find',
       hint: this.staticHint,
+      sargassum,
+      litter,
     });
+    const map = mapStateFor(s);
+    this.mapView?.show(!!map);
+    if (map) this.mapView?.render(map);
+    $('stage').dataset.map = map ? 'on' : 'off';
     $('stage').setAttribute('data-stop', t.stop);
   }
 
@@ -367,6 +435,8 @@ export class App {
   private renderTop() {
     const s = this.state;
     const parts: string[] = [];
+    const sub = document.querySelector('.brand-sub');
+    if (sub) sub.textContent = s.mode === null ? 'Belize' : s.mode === 'changing' ? `Belize: ${CHANGING_TITLE}` : LESSON_TITLE;
     if (s.mode === 'lesson') {
       const i = steps.findIndex((x) => x.id === s.step);
       parts.push(`<span class="step-indicator">Step ${i + 1} of ${steps.length}: ${esc(steps[i].label)}</span>`);
@@ -375,6 +445,10 @@ export class App {
       parts.push('<span class="step-indicator">Explore mode</span>');
     } else if (s.mode === 'find') {
       parts.push('<span class="step-indicator">Can you find…?</span>');
+    } else if (s.mode === 'changing') {
+      const steps = stepsFor(s.changing.level);
+      const i = Math.min(s.changing.step, steps.length - 1);
+      parts.push(`<span class="step-indicator">${s.changing.level === 'little' ? 'Little Explorers' : 'Expedition 2'} · Step ${i + 1} of ${steps.length}: ${esc(steps[i].label)}</span>`);
     }
     if (s.mode !== null) parts.push(btn('Home', 'home', { cls: 'top-btn', icon: '⌂' }));
     parts.push(btn('Teacher guide', 'guide', { cls: 'top-btn', icon: '📘' }));
@@ -397,22 +471,40 @@ export class App {
         ? `Resume lesson (step ${steps.findIndex((x) => x.id === r.step) + 1}: ${stepById.get(r.step)!.label})`
         : r.mode === 'find'
           ? 'Resume Can you find…?'
-          : 'Resume exploring';
+          : r.mode === 'changing'
+            ? `Resume ${CHANGING_TITLE} (step ${r.changing.step + 1}: ${stepsFor(r.changing.level)[r.changing.step]?.label ?? ''})`
+            : 'Resume exploring';
     const draft = organisms.some((o) => o.review.status !== 'reviewed');
     this.patch(
       entry,
-      `<div class="entry-box">
-        <p class="eyebrow">${esc(PRODUCT_NAME)} · Expedition 1</p>
-        <h1 id="entry-title">${esc(LESSON_TITLE)}</h1>
-        <p class="question">${esc(GUIDING_QUESTION)}</p>
-        <p>${esc(OBJECTIVE)}</p>
-        <div class="row entry-actions">
-          ${btn('Start lesson', 'start', { arg: 'lesson', cls: 'primary big', key: 'entry-start', icon: '▶' })}
-          ${btn('Explore', 'start', { arg: 'explore', cls: 'secondary big', key: 'entry-explore' })}
-          ${btn('Can you find…?', 'find', { cls: 'secondary big', key: 'entry-find', icon: '🔍' })}
-          ${r ? btn(resumeLabel, 'resume', { cls: 'secondary big', key: 'entry-resume' }) : ''}
+      `<div class="entry-box wide">
+        <p class="eyebrow">${esc(PRODUCT_NAME)} · Belize</p>
+        <h1 id="entry-title">Choose an expedition</h1>
+        ${r ? `<div class="row entry-actions">${btn(resumeLabel, 'resume', { cls: 'primary big', key: 'entry-resume', icon: '↩' })}</div>` : ''}
+        <div class="expeditions">
+          <section class="expedition" aria-labelledby="exp1-title">
+            <p class="eyebrow">Expedition 1</p>
+            <h2 id="exp1-title">${esc(LESSON_TITLE)}</h2>
+            <p class="question">${esc(GUIDING_QUESTION)}</p>
+            <p class="small">${esc(OBJECTIVE)}</p>
+            <div class="row entry-actions">
+              ${btn('Start lesson', 'start', { arg: 'lesson', cls: r ? 'secondary big' : 'primary big', key: 'entry-start', icon: '▶' })}
+              ${btn('Explore', 'start', { arg: 'explore', cls: 'secondary big', key: 'entry-explore' })}
+              ${btn('Can you find…?', 'find', { cls: 'secondary big', key: 'entry-find', icon: '🔍' })}
+            </div>
+          </section>
+          <section class="expedition" aria-labelledby="exp2-title">
+            <p class="eyebrow">Expedition 2</p>
+            <h2 id="exp2-title">${esc(CHANGING_TITLE)}</h2>
+            <p class="question">${esc(CHANGING_QUESTION)}</p>
+            <p class="small">Sargassum, trash and warming water — and how people can help.</p>
+            <div class="row entry-actions">
+              ${btn('Grades 3–6', 'start-changing', { arg: 'older', cls: 'secondary big', key: 'entry-ch-older', icon: '▶' })}
+              ${btn('Little Explorers (TK–2)', 'start-changing', { arg: 'little', cls: 'secondary big', key: 'entry-ch-little', icon: '▶' })}
+            </div>
+          </section>
         </div>
-        <p class="small muted">Sound starts only after you choose. Captions are on. About 10 minutes, teacher-led.</p>
+        <p class="small muted">Sound starts only after you choose. Captions are on. About 10 minutes each, teacher-led.</p>
         <p class="small muted">${esc(COMPOSITE_NOTICE)}${draft ? ' Draft content — scientific review pending.' : ''}</p>
       </div>`,
     );
@@ -440,11 +532,17 @@ export class App {
     if (dock.hidden) return this.updateInsets();
     const ctx = { videos: this.videos };
     dock.dataset.mode = this.state.mode ?? '';
-    dock.dataset.step = this.state.step;
+    dock.dataset.step = this.state.mode === 'changing' ? changingStep(this.state).kind : this.state.step;
     const mode = this.state.mode;
     this.patch(
       dock,
-      mode === 'lesson' ? renderLessonDock(this.state, ctx, this.paused) : mode === 'find' ? renderFindDock(this.state) : renderExploreDock(this.state),
+      mode === 'lesson'
+        ? renderLessonDock(this.state, ctx, this.paused)
+        : mode === 'find'
+          ? renderFindDock(this.state)
+          : mode === 'changing'
+            ? renderChangingDock(this.state, this.paused)
+            : renderExploreDock(this.state),
     );
     this.updateInsets();
   }
@@ -689,19 +787,27 @@ export class App {
     const typing = target.closest('input, textarea, select, [contenteditable]');
     const modalOpen = document.querySelector('dialog[open]') || !$('guide').hidden || !$('recorder').hidden;
     if (typing || modalOpen || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (this.state.mode !== 'lesson') return;
+    if (this.state.mode !== 'lesson' && this.state.mode !== 'changing') return;
+    const changing = this.state.mode === 'changing';
     const key = e.key.toLowerCase();
     if (key === 'n' || e.key === 'PageDown') {
       e.preventDefault();
-      this.dispatch({ type: 'next' });
+      if (changing) this.changingNav(1);
+      else this.dispatch({ type: 'next' });
     } else if (key === 'b' || e.key === 'PageUp') {
       e.preventDefault();
-      this.dispatch({ type: 'back' });
+      if (changing) this.changingNav(-1);
+      else this.dispatch({ type: 'back' });
     } else if (key === 'p') {
       this.togglePause();
     } else if (key === 'r') {
-      this.narrate(stepById.get(this.state.step)!.narrationId, true);
+      this.replay();
     }
+  }
+
+  private replay() {
+    const id = this.state.mode === 'changing' ? changingStep(this.state).narrationId : stepById.get(this.state.step)!.narrationId;
+    this.narrate(id, true);
   }
 
   private closeCard() {
@@ -809,13 +915,48 @@ export class App {
       case 'pause':
         return this.togglePause();
       case 'replay':
-        return this.narrate(stepById.get(this.state.step)!.narrationId, true);
+        return this.replay();
       case 'restart':
         return this.confirm('Restart the lesson?', 'This clears all answers and progress for this lesson.', 'Restart', () => {
           $<HTMLDialogElement>('settings').close();
           this.paused = false;
-          this.dispatch({ type: 'restart' });
+          if (this.state.mode === 'changing') this.dispatch({ type: 'startChanging', level: this.state.changing.level });
+          else this.dispatch({ type: 'restart' });
         });
+      case 'start-changing':
+        return this.startChanging(a as ChangingLevel);
+      case 'ch-goto':
+        return this.dispatch({ type: 'chGoto', step: Number(a) });
+      case 'ch-next':
+        return this.changingNav(1);
+      case 'ch-back':
+        return this.changingNav(-1);
+      case 'ch-belt':
+        return this.dispatch({ type: 'chBelt', index: Number(a) });
+      case 'ch-predict':
+        return this.dispatch({ type: 'chPredict', option: a });
+      case 'ch-reveal':
+        this.dispatch({ type: 'chReveal' });
+        return this.focusKey('ch-cause:nutrients');
+      case 'ch-cause':
+        return this.dispatch({ type: 'chToggleCause', cause: a as CauseId });
+      case 'ch-sarg':
+        return this.dispatch({ type: 'chSargassum', on: a === 'on' });
+      case 'clean':
+        return this.cleanLitter(a);
+      case 'ch-exit':
+        this.dispatch({ type: 'chExitIndex', index: Number(a) });
+        return this.focusKey('instruction');
+      case 'ch-action':
+        return this.dispatch({ type: 'chAction', id: a });
+      case 'ch-score':
+        return this.dispatch({ type: 'chScore', score: this.state.changing.actionScore === Number(a) ? null : Number(a) });
+      case 'ch-discussed':
+        return this.dispatch({ type: 'chDiscussed' });
+      case 'ch-helper':
+        return this.dispatch({ type: 'chHelper', id: a });
+      case 'say':
+        return this.narrate(a, true);
       case 'clear-session':
         return this.confirm('Clear this session?', 'This removes saved progress and settings from this computer.', 'Clear session', () => {
           clearAll();

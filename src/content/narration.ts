@@ -1,3 +1,4 @@
+import { CHANGING_LINES } from './changing.ts';
 import { FIND_LINES, findNarrationId, findables, spotterNarrationId } from './findables.ts';
 import { habitats } from './habitats.ts';
 import { organisms } from './organisms.ts';
@@ -63,5 +64,7 @@ export const narration: NarrationSegment[] = [
   ...organismNarration,
   ...spotterNarration,
   ...findNarration,
+  // Expedition 2: The Changing Reef.
+  ...Object.entries(CHANGING_LINES).map(([id, text]) => ({ id, text })),
 ];
 export const narrationById = new Map(narration.map((n) => [n.id, n]));

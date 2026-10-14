@@ -25,6 +25,10 @@ export interface ContentBundle {
   connectItems: FoodChoiceItem[];
   exitQuestions: ExitQuestion[];
   findables: Findable[];
+  /** Expedition 2 records (belt snapshots, causes, effects, litter…). */
+  changing: ContentRecord[];
+  /** Narration ids every lesson step needs. */
+  stepNarrationIds: string[];
 }
 
 export interface ValidationResult {
@@ -104,6 +108,10 @@ export function validateContent(c: ContentBundle, opts: { release?: boolean } = 
   }
 
   for (const r of c.foodResources) checkRecord('food resource', r);
+
+  checkUnique('expedition 2 record', c.changing.map((r) => r.id));
+  for (const r of c.changing) checkRecord('expedition 2', r);
+  for (const id of c.stepNarrationIds) if (!narrationIds.has(id)) errors.push(`step narration "${id}" is missing`);
 
   checkUnique('findable', c.findables.map((f) => f.id));
   for (const f of c.findables) {

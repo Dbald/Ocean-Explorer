@@ -22,7 +22,8 @@ import {
   buildStingray,
   type SpotterModel,
 } from './spotters.ts';
-import { disposeTree, sharedTime, tagOrganism } from './util.ts';
+import { buildLitter, buildSargassum, LITTER_PLACES, type LitterKind } from './changing3d.ts';
+import { disposeTree, sharedTime, sunlight, tagOrganism } from './util.ts';
 
 /** The algae-covered side of the rock where the parrotfish grazes. */
 const GRAZE_ROCK = { x: -12.95, z: 0.8, radius: 0.3 };
@@ -88,6 +89,12 @@ export class ReefScene {
   private time = 0;
   private opts: SceneOptions;
   private dirLight!: THREE.DirectionalLight;
+  private hemiLight!: THREE.HemisphereLight;
+  /** Expedition 2: sargassum mats (0 → 1 as they drift in) and tappable trash. */
+  private sargassum: ReturnType<typeof buildSargassum> | null = null;
+  private sargT = 0;
+  private sargTarget = 0;
+  private litter = new Map<string, { holder: THREE.Group; base: THREE.Vector3; free: boolean; active: boolean; cleanT: number | null }>();
   private camFrom: View = { position: new THREE.Vector3(), target: new THREE.Vector3() };
   private camTo: View = VIEWS.reef;
   private camT = 1;
@@ -134,7 +141,8 @@ export class ReefScene {
     progress(0.05, 'Filling the water…');
     await nextFrame();
     this.scene.fog = new THREE.FogExp2('#2b93a8', 0.045);
-    this.scene.add(new THREE.HemisphereLight('#c8f6ff', '#3c6a5c', 1.5));
+    this.hemiLight = new THREE.HemisphereLight('#c8f6ff', '#3c6a5c', 1.5);
+    this.scene.add(this.hemiLight);
     this.dirLight = new THREE.DirectionalLight('#fff3d6', 2.4);
     this.dirLight.position.set(-6, 14, 6);
     this.dirLight.target.position.set(-2, 0, -1);
@@ -230,6 +238,71 @@ export class ReefScene {
     this.addSpotter('hermit-crab', crab, 16.85, 1.55, { yaw: -0.6, tap: 0.25 });
   }
 
+  /** Expedition 2 layers. Built hidden; the app turns them on for The Changing Reef. */
+  private buildChanging() {
+    this.sargassum = buildSargassum();
+    this.sargassum.setAmount(0);
+    this.scene.add(this.sargassum.group);
+    const kinds: LitterKind[] = ['bag', 'bottle', 'net', 'line', 'bottle', 'bag', 'bottle', 'line', 'bag', 'bottle', 'bag', 'line'];
+    kinds.forEach((kind, i) => {
+      const id = `litter-${i + 1}`;
+      const at = LITTER_PLACES[id];
+      const holder = new THREE.Group();
+      const model = buildLitter(kind, 300 + i);
+      // Bags on the seabed lie flatter than floating ones.
+      if (kind === 'bag' && !at.free) model.children[0].rotation.x = -1.42;
+      holder.add(model);
+      if (at.free) holder.position.set(at.x, at.lift, at.z);
+      else this.place(holder, at.x, at.z, at.lift);
+      holder.rotation.y = at.yaw;
+      this.addTapArea(holder, kind === 'net' ? 0.5 : 0.34, 0.08);
+      holder.visible = false;
+      tagOrganism(holder, id);
+      this.scene.add(holder);
+      this.litter.set(id, { holder, base: holder.position.clone(), free: !!at.free, active: false, cleanT: null });
+    });
+  }
+
+  /** Thick sargassum mats overhead: less light reaches the reef. */
+  setSargassum(on: boolean) {
+    this.sargTarget = on ? 1 : 0;
+    if (this.opts.instantCamera) this.applySargassum((this.sargT = this.sargTarget));
+  }
+
+  private applySargassum(f: number) {
+    this.sargassum?.setAmount(f);
+    this.dirLight.intensity = 2.4 * (1 - 0.62 * f);
+    this.hemiLight.intensity = 1.5 * (1 - 0.45 * f);
+    const fog = this.scene.fog as THREE.FogExp2;
+    fog.color.set('#2b93a8').lerp(new THREE.Color('#2a5f57'), f);
+    fog.density = 0.045 + 0.02 * f;
+    sunlight.value = 1 - 0.8 * f;
+  }
+
+  /**
+   * Which pieces of trash are still in the water (null hides them all).
+   * A piece that disappears from the list floats up and away.
+   */
+  setLitter(remaining: string[] | null) {
+    for (const [id, l] of this.litter) {
+      const show = remaining !== null && remaining.includes(id);
+      if (show) {
+        l.active = true;
+        l.cleanT = null;
+        l.holder.visible = true;
+        l.holder.scale.setScalar(1);
+        l.holder.position.copy(l.base);
+      } else if (l.active && remaining !== null && !this.opts.instantCamera) {
+        l.active = false;
+        l.cleanT = 0;
+      } else {
+        l.active = false;
+        l.cleanT = null;
+        l.holder.visible = false;
+      }
+    }
+  }
+
   /** Objects that bounce on tap. The coral thicket group spans the reef, so only its main colony bounces. */
   private bouncers(id: string): THREE.Object3D[] {
     return id === 'elkhorn-coral' ? [this.focusColony.group] : (this.instances.get(id) ?? []);
@@ -322,6 +395,7 @@ export class ReefScene {
     this.scene.add(this.ring);
 
     this.buildSpotters();
+    this.buildChanging();
 
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
@@ -456,7 +530,8 @@ export class ReefScene {
     const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
     const ray = new THREE.Raycaster();
     ray.setFromCamera(ndc, this.camera);
-    const hit = ray.intersectObjects(this.pickables, true)[0];
+    const litter = [...this.litter.values()].filter((l) => l.active).map((l) => l.holder);
+    const hit = ray.intersectObjects([...this.pickables, ...litter], true)[0];
     return (hit?.object.userData.organismId as string | undefined) ?? null;
   }
 
@@ -469,6 +544,7 @@ export class ReefScene {
 
   dispose() {
     cancelAnimationFrame(this.raf);
+    sunlight.value = 1;
     this.resizeObserver.disconnect();
     disposeTree(this.scene);
     this.renderer.dispose();
@@ -641,11 +717,36 @@ export class ReefScene {
         }
       }
     }
+    // Sargassum drifting in or out, and trash floating away when cleaned: direct feedback, so always on.
+    if (this.sargT !== this.sargTarget) {
+      this.sargT = THREE.MathUtils.clamp(this.sargT + Math.sign(this.sargTarget - this.sargT) * (dt / 1.8), 0, 1);
+      this.applySargassum(this.sargT * this.sargT * (3 - 2 * this.sargT));
+    }
+    for (const l of this.litter.values()) {
+      if (l.cleanT === null) continue;
+      l.cleanT += dt / 1.1;
+      const p = Math.min(1, l.cleanT);
+      l.holder.position.set(l.base.x, l.base.y + p * p * 1.4, l.base.z);
+      l.holder.scale.setScalar(1 - p * 0.9);
+      l.holder.rotation.y += dt * 3;
+      if (p >= 1) {
+        l.cleanT = null;
+        l.holder.visible = false;
+      }
+    }
+
     if (this.hintId) this.ring.scale.setScalar(this.ring.userData.baseScale * (1 + Math.sin(performance.now() / 160) * 0.06));
 
     if (!this.opts.ambientMotion) return;
 
     for (const [id, m] of this.spotterModels) if (!this.reactions.has(id)) m.animate?.(t);
+    if (this.sargT > 0) this.sargassum?.animate(t);
+    for (const [id, l] of this.litter) {
+      if (!l.active || !l.free) continue;
+      const k = Number(id.slice(7));
+      l.holder.position.y = l.base.y + Math.sin(t * 0.7 + k) * 0.06;
+      l.holder.rotation.z = Math.sin(t * 0.5 + k) * 0.15;
+    }
     if (this.eagleRay) {
       // A slow, gliding loop above the meadow.
       const a = t * 0.22;

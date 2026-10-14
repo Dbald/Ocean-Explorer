@@ -105,6 +105,52 @@ These go with the 20 tappable animals and the "Can you find…?" game. Until the
 | Reminder at the end | `find-remember.mp3` | Remember, in the real ocean we look at animals, but we never touch them. |
 
 
+## Expedition 2 lines to record (27 lines, about 3 minutes)
+
+These go with The Changing Reef. Until they are recorded, the browser voice reads them.
+
+### Grades 3–6
+
+| Line | File | Words to read |
+|---|---|---|
+| Step 1: Briefing | `ch-step-briefing.mp3` | What’s changing on Belize’s reef? In Belize, more and more brown seaweed called sargassum is floating in and piling up on the beaches. Let’s find out why, and what it means for the reef. |
+| Step 2: The belt | `ch-step-belt.mp3` | This map shows a giant belt of sargassum floating across the Atlantic Ocean. Compare the years. Watch how ocean currents carry it west, all the way to Belize. |
+| Step 3: What feeds it? | `ch-step-causes.mp3` | What makes the sargassum grow so much? Make a prediction. Then turn each one on and off and watch what happens. |
+| Step 4: Our reef | `ch-step-reef.mp3` | We’re back at our reef. Compare it with and without too much sargassum. Then help clean up the trash. |
+| Step 5: Explain | `ch-step-explain.mp3` | Now it’s your turn to explain. Answer three questions about what you learned. |
+| Step 6: Recap | `ch-step-recap.mp3` | Too much sargassum and pollution can harm Belize’s reef. Extra nutrients, currents and warmer water all play a part. And people can help. |
+| Map: Before 2011 | `ch-belt-before.mp3` | Before 2011, scientists did not see big belts of sargassum across this part of the Atlantic. |
+| Map: 2018 | `ch-belt-2018.mp3` | In 2018 the belt stretched about 8,850 kilometers, from Africa to the Gulf of Mexico, with more than 20 million tons of sargassum. |
+| Map: 2025 | `ch-belt-2025.mp3` | In May 2025 there was a record: about 38 million tons — the most since scientists started studying the belt. |
+| What scientists think | `ch-causes-reveal.mp3` | Scientists think extra nutrients from land are a big part of it. Ocean currents carry the sargassum to Belize, and warmer water plays a part too. There isn’t one single cause — scientists are still investigating. |
+| The twist | `ch-twist.mp3` | Out in the open ocean, floating sargassum is a home for baby sea turtles and young fish. It’s too much piling up near shore that causes harm. |
+| Not just Belize | `ch-beyond.mp3` | Far away in Los Angeles, a marine heatwave in 2026 brought warm-water fish and sharks that usually live farther south. When ocean water warms, animals can move — and habitats change. |
+
+### Little Explorers (TK–2)
+
+| Line | File | Words to read |
+|---|---|---|
+| Step 1: Story | `ch-little-story.mp3` | Something is changing in Belize’s ocean. There is trash in the water, and lots of brown seaweed floating in. Let’s help the reef! |
+| Step 2: Clean up | `ch-little-cleanup.mp3` | Help clean the reef! Come up and tap the trash. |
+| Step 3: Seaweed | `ch-little-seaweed.mp3` | This brown seaweed is called sargassum. Out in the deep ocean, it’s a home for baby sea turtles. But when too much floats in, it blocks the sunlight. Tap the button to see. |
+| Step 4: Helpers | `ch-little-help.mp3` | How can we help the ocean? Tap each card. |
+| Step 5: Well done | `ch-little-done.mp3` | You helped the reef! Remember, in the ocean we look at animals, but we never touch them. |
+| A stop is all clean | `ch-little-clean-stop.mp3` | This spot is all clean! Let’s check the next one. |
+| All the trash is cleaned | `ch-little-thanks.mp3` | Thank you! The reef is cleaner. |
+| Helper: Put trash in a bin | `ch-help-bin.mp3` | Put trash in a bin, so it never reaches the ocean. |
+| Helper: Let grown-ups clean the seaweed | `ch-help-grownup.mp3` | If seaweed piles up on the beach, let grown-ups clean it up safely. |
+| Helper: Look, don’t touch | `ch-help-look.mp3` | In the ocean, we look at animals, but we never touch them. |
+| Helper: Tell others | `ch-help-share.mp3` | Tell your family what you learned about the ocean. |
+
+### Trash facts (heard when a child picks up trash)
+
+| Line | File | Words to read |
+|---|---|---|
+| bag | `ch-litter-bag.mp3` | Plastic bag! Sea turtles can mistake plastic bags for jellyfish and try to eat them. |
+| bottle | `ch-litter-bottle.mp3` | Plastic bottle! Plastic breaks into tiny pieces that can harm ocean animals. |
+| net | `ch-litter-net.mp3` | Old fishing net! Old fishing nets can trap animals and damage coral. |
+| line | `ch-litter-line.mp3` | Fishing line! Fishing line can tangle around animals. |
+
 ## Adding recordings to the lesson
 
 1. Convert each file to MP3 (mono, normalised loudness):

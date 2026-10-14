@@ -18,6 +18,7 @@ function markAllReviewed(c: ContentBundle): ContentBundle {
     foodRelationships: r(c.foodRelationships),
     shelterRelationships: r(c.shelterRelationships),
     findables: r(c.findables),
+    changing: r(c.changing),
   };
 }
 

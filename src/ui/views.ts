@@ -33,7 +33,7 @@ export interface ViewContext {
 
 // ── Shared pieces ────────────────────────────────────────────────────────────
 
-function stopNav(state: LessonState) {
+export function stopNav(state: LessonState) {
   return `<nav class="stop-nav" aria-label="Habitat stops">
     ${habitats
       .map((h, i) =>
@@ -99,7 +99,7 @@ function videoButton(ctx: ViewContext, step: string) {
   return v ? btn(`Message from Devin: ${v.title}`, 'video', { arg: v.id, cls: 'ghost', icon: '▶' }) : '';
 }
 
-function choiceItem(state: LessonState, item: FoodChoiceItem) {
+export function choiceItem(state: LessonState, item: FoodChoiceItem) {
   const c = choice(state, item.id);
   const selected = item.options.find((o) => o.id === c.selected);
   const options = item.options
@@ -124,7 +124,7 @@ function choiceItem(state: LessonState, item: FoodChoiceItem) {
     ${feedback}`;
 }
 
-function tabs(action: string, labels: string[], current: number, statuses: boolean[]) {
+export function tabs(action: string, labels: string[], current: number, statuses: boolean[]) {
   return `<div class="subtabs" role="group" aria-label="Questions">
     ${labels
       .map((l, i) => btn(`${l}${statuses[i] ? ' ✓' : ''}`, action, { arg: String(i), cls: `subtab${i === current ? ' is-current' : ''}`, pressed: i === current }))

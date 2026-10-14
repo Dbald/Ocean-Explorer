@@ -3,6 +3,24 @@
  * lesson without Devin present. The same markup is used on screen and in print.
  */
 import { assets } from '../content/assets.ts';
+import {
+  CHANGING_OBJECTIVE,
+  CHANGING_QUESTION,
+  CHANGING_TITLE,
+  beltSnapshots,
+  beyondBelize,
+  causesReveal,
+  changingActions,
+  changingExitFood,
+  changingExitTwist,
+  changingRecords,
+  helpers,
+  littleSteps,
+  olderSteps,
+  reefEffects,
+  sargassumTwist,
+  type ChangingStep,
+} from '../content/changing.ts';
 import { findables } from '../content/findables.ts';
 import { foodRelationships, shelterRelationships } from '../content/food.ts';
 import { habitatById } from '../content/habitats.ts';
@@ -99,6 +117,8 @@ export function renderGuide(availableVideos: string[]) {
           .join('')}</tbody>
       </table>
     </section>
+
+    ${renderChangingGuide()}
 
     <section>
       <h2>Vocabulary</h2>
@@ -199,14 +219,70 @@ export function renderGuide(availableVideos: string[]) {
   </article>`;
 }
 
+function sequenceTable(list: ChangingStep[]) {
+  return `<table>
+    <thead><tr><th scope="col">Time</th><th scope="col">Step</th><th scope="col">What students do</th><th scope="col">Teacher notes and prompts</th></tr></thead>
+    <tbody>${list
+      .map(
+        (s) => `<tr><td>${esc(s.time)}</td><th scope="row">${esc(s.label)}</th><td>${esc(s.instruction)}</td>
+          <td><ul>${s.teacherNotes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>${s.prompts.length ? `<p><em>Ask:</em> ${s.prompts.map(esc).join(' · ')}</p>` : ''}</td></tr>`,
+      )
+      .join('')}</tbody>
+  </table>`;
+}
+
+/** Expedition 2 — The Changing Reef: both levels, the science framing and the answers. */
+function renderChangingGuide() {
+  const draft = changingRecords.some((r) => r.review.status !== 'reviewed');
+  const answer = (q: typeof changingExitFood) => `${esc(q.prompt)} Answer: <strong>${esc(q.options.find((o) => o.correct)!.label)}</strong>. ${esc(q.explanation)}`;
+  return `<section class="guide-expedition">
+      <p class="eyebrow">Expedition 2</p>
+      <h2>${esc(CHANGING_TITLE)}</h2>
+      <p class="lead"><strong>Objective:</strong> ${esc(CHANGING_OBJECTIVE)}</p>
+      <p><strong>Guiding question:</strong> ${esc(CHANGING_QUESTION)}</p>
+      <p><strong>Two levels.</strong> <em>Grades 3–6</em> uses a map of the sargassum belt, a cause model, the reef with and without too much sargassum, and three exit questions. <em>Little Explorers (TK–2)</em> is a short, hands-on version: clean up the trash, see the seaweed block the light, and pick ways to help. About 10 minutes each.</p>
+      ${draft ? '<p class="notice"><strong>Content status:</strong> draft. These facts are sourced but still need scientific review before public release.</p>' : ''}
+      <h3>The science, in brief</h3>
+      <ul>
+        <li><strong>The belt.</strong> Since 2011 a huge belt of sargassum has formed across the tropical Atlantic. ${esc(beltSnapshots[1].text)} ${esc(beltSnapshots[2].text)}</li>
+        <li><strong>What feeds it.</strong> ${esc(causesReveal)}</li>
+        <li><strong>Be careful with “global warming makes the seaweed grow”.</strong> Warmer water is one factor, but research does not show it as the main or only cause, and warming can also shrink sargassum in some places. Extra nutrients are a big part of the story.</li>
+        <li><strong>At the reef.</strong> ${esc(reefEffects.reef)} ${esc(reefEffects.sand)}</li>
+        <li><strong>The twist.</strong> ${esc(sargassumTwist.text)}</li>
+        <li><strong>${esc(beyondBelize.title)}.</strong> ${esc(beyondBelize.text)}</li>
+      </ul>
+      <p class="small">The map is a simplified drawing based on satellite studies, not a live satellite map. The “What feeds it?” model is labelled <em>Simplified example</em>: it shows the idea, not real amounts.</p>
+      <p class="small"><strong>Your own experience:</strong> the lesson works without it, but photos or stories from Belize fit naturally in the Briefing (or Story) step.</p>
+      <h3>Grades 3–6 sequence</h3>
+      ${sequenceTable(olderSteps)}
+      <h3>Little Explorers (TK–2) sequence</h3>
+      ${sequenceTable(littleSteps)}
+      <p>Ways to help (every card is a good answer): ${helpers.map((h) => esc(h.label)).join(' · ')}.</p>
+      <h3>Answers (Grades 3–6)</h3>
+      <ol>
+        <li>${answer(changingExitFood)}</li>
+        <li>${answer(changingExitTwist)}</li>
+        <li>${esc(changingActions.prompt)} Any action connected to trash, nutrients or learning more counts.
+          <table class="rubric-table"><thead><tr><th scope="col">Score</th><th scope="col">Description</th><th scope="col">Example</th></tr></thead>
+          <tbody>${changingActions.rubric.map((r) => `<tr><td>${r.score}</td><td>${esc(r.label)}</td><td>${esc(r.example)}</td></tr>`).join('')}</tbody></table></li>
+      </ol>
+      <p class="small"><strong>Safety:</strong> rotting sargassum on beaches gives off gas, so clean-up is a job for adults with gloves. Children never touch reef animals.</p>
+    </section>`;
+}
+
 export function renderTranscript(availableVideos: string[]) {
   const stepText = steps.map((s) => `<h4>${esc(s.label)}</h4><p>${esc(narrationById.get(s.narrationId)?.text ?? '')}</p>`).join('');
   const others = narration
-    .filter((n) => !n.id.startsWith('step-'))
+    .filter((n) => !n.id.startsWith('step-') && !n.id.startsWith('ch-'))
+    .map((n) => `<p>${esc(n.text)}</p>`)
+    .join('');
+  const changing = narration
+    .filter((n) => n.id.startsWith('ch-'))
     .map((n) => `<p>${esc(n.text)}</p>`)
     .join('');
   const videos = videoSegments
     .filter((v) => availableVideos.includes(v.id))
     .map((v) => `<p><strong>${esc(v.title)} (video, optional):</strong> ${esc(v.transcript)}</p>`).join('');
-  return `<div class="transcript">${stepText}<h4>Habitats and organisms</h4>${others}${videos ? `<h4>Video segments</h4>${videos}` : ''}</div>`;
+  return `<div class="transcript"><h3>Expedition 1: ${esc(LESSON_TITLE)}</h3>${stepText}<h4>Habitats and organisms</h4>${others}${videos ? `<h4>Video segments</h4>${videos}` : ''}
+    <h3>Expedition 2: ${esc(CHANGING_TITLE)}</h3>${changing}</div>`;
 }

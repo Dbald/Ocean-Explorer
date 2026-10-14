@@ -3,6 +3,7 @@
  * order with Record, Play and Save controls, so the teacher can record the
  * whole script in one sitting. Nothing is uploaded: files are saved locally.
  */
+import { beltSnapshots, helpers, littleSteps, olderSteps } from '../content/changing.ts';
 import { findables, findNarrationId, spotterNarrationId } from '../content/findables.ts';
 import { habitats } from '../content/habitats.ts';
 import { steps } from '../content/lesson.ts';
@@ -31,6 +32,29 @@ const groups: { title: string; ids: { id: string; label: string }[] }[] = [
       { id: 'find-done', label: 'End of the game' },
       { id: 'find-remember', label: 'Reminder at the end' },
     ],
+  },
+  {
+    title: 'Expedition 2: The Changing Reef (Grades 3–6)',
+    ids: [
+      ...olderSteps.map((st, i) => ({ id: st.narrationId, label: `Step ${i + 1}: ${st.label}` })),
+      ...beltSnapshots.map((b) => ({ id: b.narrationId, label: `Map: ${b.label}` })),
+      { id: 'ch-causes-reveal', label: 'What scientists think' },
+      { id: 'ch-twist', label: 'The twist' },
+      { id: 'ch-beyond', label: 'Not just Belize' },
+    ],
+  },
+  {
+    title: 'Expedition 2: Little Explorers (TK–2)',
+    ids: [
+      ...littleSteps.map((st, i) => ({ id: st.narrationId, label: `Step ${i + 1}: ${st.label}` })),
+      { id: 'ch-little-clean-stop', label: 'A stop is all clean' },
+      { id: 'ch-little-thanks', label: 'All the trash is cleaned' },
+      ...helpers.map((h) => ({ id: `ch-help-${h.id}`, label: `Helper: ${h.label}` })),
+    ],
+  },
+  {
+    title: 'Expedition 2: trash facts (heard when a child picks up trash)',
+    ids: (['bag', 'bottle', 'net', 'line'] as const).map((k) => ({ id: `ch-litter-${k}`, label: k === 'net' ? 'Fishing net' : k === 'line' ? 'Fishing line' : `Plastic ${k}` })),
   },
 ];
 

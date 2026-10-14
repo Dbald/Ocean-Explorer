@@ -31,6 +31,57 @@ const HOTSPOTS: Record<string, { x: number; y: number }> = {
   'hermit-crab': { x: 26, y: 84 },
 };
 
+/** Expedition 2: where each piece of trash sits in the illustrations. */
+const LITTER_SPOTS: Record<string, { x: number; y: number; kind: 'bag' | 'bottle' | 'net' | 'line' }> = {
+  'litter-1': { x: 42, y: 36, kind: 'bag' },
+  'litter-2': { x: 63, y: 80, kind: 'bottle' },
+  'litter-3': { x: 8, y: 86, kind: 'net' },
+  'litter-4': { x: 60, y: 46, kind: 'line' },
+  'litter-5': { x: 66, y: 93, kind: 'bottle' },
+  'litter-6': { x: 33, y: 72, kind: 'bag' },
+  'litter-7': { x: 63, y: 80, kind: 'bottle' },
+  'litter-8': { x: 88, y: 70, kind: 'line' },
+  'litter-9': { x: 30, y: 30, kind: 'bag' },
+  'litter-10': { x: 64, y: 90, kind: 'bottle' },
+  'litter-11': { x: 38, y: 66, kind: 'bag' },
+  'litter-12': { x: 90, y: 64, kind: 'line' },
+};
+const LITTER_STOP: Record<string, HabitatId> = Object.fromEntries(
+  Object.keys(LITTER_SPOTS).map((id) => [id, Number(id.slice(7)) <= 5 ? 'reef' : Number(id.slice(7)) <= 9 ? 'seagrass' : 'sand']),
+) as Record<string, HabitatId>;
+
+const LITTER_ICONS = {
+  bag: '<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M-30 -18 Q-34 30 -26 38 L26 38 Q34 30 30 -18 L18 -18 Q18 -40 8 -40 Q2 -26 6 -18 L-6 -18 Q-2 -26 -8 -40 Q-18 -40 -18 -18Z" fill="#f4f7f6" fill-opacity="0.85" stroke="#9fb4ba" stroke-width="3"/><path d="M-20 0 Q0 10 20 -2 M-18 20 Q2 26 22 18" stroke="#c8d6da" stroke-width="3" fill="none"/></svg>',
+  bottle: '<svg viewBox="-50 -50 100 100" aria-hidden="true"><g transform="rotate(-70)"><rect x="-14" y="-24" width="28" height="56" rx="8" fill="#bfe6f2" fill-opacity="0.8" stroke="#7fb2c2" stroke-width="3"/><path d="M-10 -24 Q-8 -36 -5 -38 L5 -38 Q8 -36 10 -24Z" fill="#bfe6f2" stroke="#7fb2c2" stroke-width="3"/><rect x="-6" y="-46" width="12" height="9" rx="2" fill="#1f6fe0"/><rect x="-14" y="0" width="28" height="12" fill="#e0453a"/></g></svg>',
+  net: '<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M-44 30 Q-30 -30 0 -34 Q34 -30 44 30Z" fill="none" stroke="#2f8f6a" stroke-width="3"/><g stroke="#2f8f6a" stroke-width="3">' +
+    [-30, -15, 0, 15, 30].map((x) => `<line x1="${x}" y1="30" x2="${x * 0.4}" y2="-32"/>`).join('') +
+    [-15, 0, 15].map((y) => `<line x1="-42" y1="${y}" x2="42" y2="${y}"/>`).join('') +
+    '</g><circle cx="34" cy="-14" r="8" fill="#f07a22"/></svg>',
+  line: '<svg viewBox="-50 -50 100 100" aria-hidden="true"><path d="M-30 10 C-40 -30 20 -40 25 -10 C30 20 -20 30 -15 0 C-10 -25 35 -20 30 15 C25 40 -35 35 -30 10" fill="none" stroke="#e9f27a" stroke-width="4"/><circle cx="30" cy="15" r="6" fill="#7d8590"/></svg>',
+};
+
+/** Thick sargassum mats along the top of the picture, shading everything below. */
+function sargassumOverlay(stop: HabitatId) {
+  let r = 7;
+  const rand = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
+  const clumps = Array.from({ length: 34 }, (_, i) => {
+    const x = (i / 33) * 1700 - 50 + rand() * 40;
+    const y = 30 + rand() * 90;
+    const rx = 60 + rand() * 70;
+    return `<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="${rx.toFixed(0)}" ry="${(rx * 0.35).toFixed(0)}" fill="${i % 2 ? '#7d5a1c' : '#5e4416'}"/>`;
+  }).join('');
+  const bladders = Array.from({ length: 140 }, () => `<circle cx="${(rand() * 1600).toFixed(0)}" cy="${(40 + rand() * 110).toFixed(0)}" r="${(5 + rand() * 5).toFixed(1)}" fill="#a9792a"/>`).join('');
+  const strands = Array.from({ length: 40 }, () => {
+    const x = rand() * 1600;
+    return `<path d="M${x.toFixed(0)} 120 q${(rand() * 30 - 15).toFixed(0)} 60 ${(rand() * 20 - 10).toFixed(0)} ${(70 + rand() * 90).toFixed(0)}" stroke="#6b4d18" stroke-width="4" fill="none"/>`;
+  }).join('');
+  const piles =
+    stop === 'sand'
+      ? Array.from({ length: 7 }, (_, i) => `<ellipse cx="${120 + i * 210 + rand() * 40}" cy="${800 + rand() * 50}" rx="${70 + rand() * 30}" ry="22" fill="#5e4416"/>`).join('')
+      : '';
+  return `<g class="sargassum-overlay"><rect width="1600" height="900" fill="#14281f" opacity="0.38"/>${strands}${clumps}${bladders}${piles}</g>`;
+}
+
 // ── Spotter animals (simple, readable shapes) ─────────────────────────────
 
 const seaFan = (x: number, y: number) => `
@@ -286,6 +337,10 @@ export interface StaticSceneState {
   labels: boolean;
   /** An animal to point out (game hint). */
   hint: string | null;
+  /** Expedition 2: thick sargassum overhead. */
+  sargassum?: boolean;
+  /** Expedition 2: trash still in the water (null = none shown). While trash is shown, the animals' buttons step aside. */
+  litter?: string[] | null;
 }
 
 export class StaticScene {
@@ -302,7 +357,7 @@ export class StaticScene {
   }
 
   render(s: StaticSceneState) {
-    const key = `${s.stop}|${s.selected}|${s.shelterView}|${s.labels}|${s.hint}`;
+    const key = `${s.stop}|${s.selected}|${s.shelterView}|${s.labels}|${s.hint}|${s.sargassum}|${s.litter?.join(',') ?? '-'}`;
     if (key === this.lastKey) return;
     this.lastKey = key;
     const focused = (document.activeElement as HTMLElement | null)?.dataset?.organism;
@@ -315,12 +370,20 @@ export class StaticScene {
     this.root.innerHTML = `<div class="static-frame">
       <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${habitat?.accessibleDescription ?? ''}"${zoom}>
         ${illustration(s.stop, s.shelterView)}
+        ${s.sargassum ? sargassumOverlay(s.stop) : ''}
       </svg>
-      ${s.shelterView || zoomed ? '' : here
+      ${s.shelterView || zoomed || s.litter ? '' : here
         .map((o) => {
           const p = HOTSPOTS[o.id];
           const cls = `hotspot${s.labels ? '' : ' is-blank'}${o.id === s.selected ? ' is-selected' : ''}${o.id === s.hint ? ' is-hint' : ''}`;
           return `<button class="${cls}" style="left:${p.x}%;top:${p.y}%" data-organism="${o.id}" aria-label="${o.title}" aria-pressed="${o.id === s.selected}">${s.labels ? o.title : ''}</button>`;
+        })
+        .join('')}
+      ${zoomed ? '' : (s.litter ?? [])
+        .filter((id) => LITTER_STOP[id] === s.stop)
+        .map((id) => {
+          const p = LITTER_SPOTS[id];
+          return `<button class="litter-spot" style="left:${p.x}%;top:${p.y}%" data-organism="${id}" aria-label="Trash: ${p.kind === 'line' ? 'fishing line' : p.kind === 'net' ? 'fishing net' : `plastic ${p.kind}`}">${LITTER_ICONS[p.kind]}</button>`;
         })
         .join('')}</div>`;
     this.root.querySelectorAll<HTMLButtonElement>('[data-organism]').forEach((b) =>

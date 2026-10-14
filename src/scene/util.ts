@@ -30,11 +30,15 @@ export function smoothstep(e0: number, e1: number, x: number) {
 /** Shared time uniform so ambient animation can pause independently of narration. */
 export const sharedTime = { value: 0 };
 
+/** How much sunlight reaches the seafloor (1 = clear water). Drives caustics and light shafts. */
+export const sunlight = { value: 1 };
+
 /** Adds animated sunlight caustics to a standard material (seafloor, rocks). */
 export function withCaustics(material: THREE.MeshStandardMaterial, strength = 0.35) {
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = sharedTime;
     shader.uniforms.uCausticStrength = { value: strength };
+    shader.uniforms.uSun = sunlight;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vOeWorld;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvOeWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;');
@@ -45,6 +49,7 @@ export function withCaustics(material: THREE.MeshStandardMaterial, strength = 0.
 varying vec3 vOeWorld;
 uniform float uTime;
 uniform float uCausticStrength;
+uniform float uSun;
 float oeCaustic(vec2 p, float t) {
   float c = 0.0;
   c += sin(p.x * 2.1 + t * 0.9 + sin(p.y * 1.7 + t * 0.6));
@@ -58,7 +63,7 @@ float oeCaustic(vec2 p, float t) {
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
 float oeUp = clamp(normal.y, 0.0, 1.0);
-totalEmissiveRadiance += vec3(0.75, 0.95, 1.0) * oeCaustic(vOeWorld.xz * 2.4, uTime) * uCausticStrength * (0.4 + 0.6 * oeUp);`,
+totalEmissiveRadiance += vec3(0.75, 0.95, 1.0) * oeCaustic(vOeWorld.xz * 2.4, uTime) * uCausticStrength * uSun * (0.4 + 0.6 * oeUp);`,
       );
   };
   return material;

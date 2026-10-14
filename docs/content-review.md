@@ -39,6 +39,17 @@ Each relationship is validated on its own. They are separate examples, not one f
 - [ ] No curriculum-standard alignment or certification is claimed.
 - [ ] The asset register (`src/content/assets.ts`) covers every shipped asset, including any recorded video.
 
+## Expedition 2: The Changing Reef
+
+Every record in `src/content/changing.ts` (the belt snapshots, the three causes, the reef effects, the sargassum twist, the Los Angeles example and the 12 pieces of trash) is a draft awaiting review.
+
+- [ ] The cause framing matches current research: extra nutrients from land are a big part, with currents and warmer water. There is no single cause, and warming is never presented as the main or only driver.
+- [ ] The belt figures (about 8,850 km and more than 20 million tons in 2018; about 38 million tons in May 2025) still match the sources.
+- [ ] The map is labelled a simplified drawing, and the cause model is labelled **Simplified example**.
+- [ ] The Los Angeles heatwave example is still current and fairly described.
+- [ ] Trash facts are supported by the NOAA sources listed below.
+- [ ] Safety wording: sargassum clean-up is for adults with gloves.
+
 ## Recording a review
 
 In the record's file under `src/content/`, change its `review` to:
@@ -69,3 +80,15 @@ The gate also rejects a `reviewed` record that has no reviewer or date.
 | `noaa-queen-conch` | [NOAA Fisheries — Queen conch](https://www.fisheries.noaa.gov/species/queen-conch) | Grazing herbivore; habitat by life stage |
 | `fishbase-stoplight` | [FishBase — *Sparisoma viride*](https://fishbase.se/summary/1161) | Algae diet; species-specific |
 | `flmnh-barracuda` | [Florida Museum — Great barracuda](https://www.floridamuseum.ufl.edu/discover-fish/species-profiles/great-barracuda) | Predator of fish, squid, shrimp; sight hunter |
+| `wang-2019-belt` | [Science / Woods Hole Oceanographic Institution copy — The great Atlantic Sargassum belt (Wang et al., Science, 2019)](https://science.whoi.edu/users/mcgillic/Sargassum/pdfs/wang_et_al_science_2019.pdf) | Since 2011 a belt of sargassum has formed across the tropical Atlantic; in June 2018 it was about 8,850 km long and held more than 20 million tons. Ocean currents control where it goes; nutrients from West African upwelling and the Amazon River are linked to its growth. |
+| `ap-2025-record` | [Associated Press (via News4Jax) — Scientists say a record amount of seaweed hit the Caribbean and nearby areas in May](https://www.news4jax.com/tech/2025/06/03/scientists-say-a-record-amount-of-seaweed-hit-the-caribbean-and-nearby-areas-in-may/) | About 38 million tons of sargassum in May 2025, the most since study of the belt began in 2011; scientists still lack a full explanation. |
+| `fau-nitrogen` | [Florida Atlantic University (Harbor Branch) — Sargassum now the world’s largest harmful algal bloom due to nitrogen](https://www.fau.edu/newsdesk/articles/nitrogen-seaweed-study.php) | Nitrogen in sargassum tissue has risen since the 1980s, linked to runoff, wastewater and atmospheric inputs from land. |
+| `globe-shifting-climate` | [The Boston Globe (AP) — Shifting climate alters pattern of Atlantic’s giant seaweed blobs](https://www.bostonglobe.com/2025/12/04/nation/shifting-climate-alters-pattern-atlantics-giant-seaweed-blobs) | Warming is one of several factors: the northern Sargasso Sea patch shrank in warmer water while the tropical belt grew. No single cause. |
+| `noaa-sargassum-habitat` | [NOAA National Ocean Service — Sargassum: a floating habitat](https://oceanservice.noaa.gov/news/sargassum) | Floating sargassum in the open ocean is habitat for young fish and young sea turtles. |
+| `sanpedrosun-2025` | [The San Pedro Sun — Delicate balance at risk: Belize reef battles record sargassum levels](https://www.sanpedrosun.com/conservation/2025/08/21/delicate-balance-at-risk-belize-reef-battles-record-sargassum-levels/) | In Belize in 2025, thick mats reduced sunlight and oxygen near shore; dead lobsters, crabs, octopus, eels and fish washed ashore; mats reached over the reef. |
+| `epa-sargassum-health` | [U.S. Environmental Protection Agency — Sargassum inundation events: impacts on human health](https://19january2025snapshot.epa.gov/habs/sargassum-inundation-events-sies-impacts-human-health) | Sargassum rotting on beaches gives off hydrogen sulfide and ammonia gas; clean-up is a job for adults with protective gear. |
+| `noaa-debris-turtles` | [NOAA Marine Debris Program — NOAA Marine Debris Program blog: sea turtles and plastic bags](https://blog.marinedebris.noaa.gov/node/181) | A floating plastic bag can look like a jellyfish, a favorite sea turtle food; once swallowed it can make the turtle very sick. |
+| `noaa-derelict-gear` | [NOAA Marine Debris Program — Derelict fishing gear](https://marinedebris.noaa.gov/types/derelict-fishing-gear) | Lost fishing gear such as nets and fishing line can entangle wildlife ("ghost fishing") and damage coral reefs, mangroves and seagrass beds. |
+| `noaa-microplastics` | [NOAA National Ocean Service — What are microplastics?](https://oceanservice.noaa.gov/facts/microplastics.html) | Microplastics are pieces smaller than 5 mm; many come from larger plastic debris that breaks into smaller and smaller pieces, and they can harm ocean life. |
+| `abc7-la-heatwave` | [ABC7 Los Angeles — Warm ocean waters bring unusual fishing boom off Southern California coast](https://abc7.com/post/warm-ocean-waters-bring-unusual-fishing-boom-off-southern-california-coast/19792295/) | A 2026 marine heatwave brought warm-water fish usually found farther south to Southern California, according to a California Department of Fish and Wildlife scientist. |
+| `accuweather-la-sharks` | [AccuWeather — Warmer ocean waters draw more sharks to Southern California](https://www.accuweather.com/en/climate/warmer-ocean-waters-draw-more-sharks-to-southern-california/1924130) | Warm-water shark species that usually stay farther south have been seen more often off Southern California as waters warm. |

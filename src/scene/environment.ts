@@ -3,7 +3,7 @@
  * (reef → seagrass → sand) along the x axis.
  */
 import * as THREE from 'three';
-import { noise2, range, rng, sharedTime, smoothstep, withCaustics } from './util.ts';
+import { noise2, range, rng, sharedTime, smoothstep, sunlight, withCaustics } from './util.ts';
 
 export const SECTION = {
   reef: { x0: -24, x1: -6 },
@@ -55,10 +55,10 @@ function buildBackdrop() {
     side: THREE.BackSide,
     depthWrite: false,
     fog: false,
-    uniforms: { top: { value: new THREE.Color('#9fe6ef') }, mid: { value: new THREE.Color('#2a9bb0') }, bottom: { value: new THREE.Color('#0b4a63') } },
+    uniforms: { top: { value: new THREE.Color('#9fe6ef') }, mid: { value: new THREE.Color('#2a9bb0') }, bottom: { value: new THREE.Color('#0b4a63') }, uSun: sunlight },
     vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
     fragmentShader:
-      'uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; varying vec3 vP; void main(){ float h = vP.y; vec3 c = h > 0.0 ? mix(mid, top, smoothstep(0.0, 0.7, h)) : mix(mid, bottom, smoothstep(0.0, -0.4, h)); gl_FragColor = vec4(c, 1.0); }',
+      'uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; uniform float uSun; varying vec3 vP; void main(){ float h = vP.y; vec3 c = h > 0.0 ? mix(mid, top, smoothstep(0.0, 0.7, h)) : mix(mid, bottom, smoothstep(0.0, -0.4, h)); vec3 murk = vec3(dot(c, vec3(0.3, 0.5, 0.2))) * vec3(0.62, 0.7, 0.5); gl_FragColor = vec4(mix(murk, c, uSun), 1.0); }',
   });
   return new THREE.Mesh(geo, mat);
 }
@@ -202,10 +202,10 @@ function lightShafts(count: number) {
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
-    uniforms: { uTime: sharedTime },
+    uniforms: { uTime: sharedTime, uSun: sunlight },
     vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
     fragmentShader:
-      'uniform float uTime; varying vec2 vUv; void main(){ float edge = smoothstep(0.0,0.35,vUv.x)*smoothstep(1.0,0.65,vUv.x); float fade = smoothstep(0.0,0.9,vUv.y); float flicker = 0.75 + 0.25*sin(uTime*0.6 + vUv.x*6.0); gl_FragColor = vec4(vec3(0.85,0.97,1.0), edge*fade*0.09*flicker); }',
+      'uniform float uTime; uniform float uSun; varying vec2 vUv; void main(){ float edge = smoothstep(0.0,0.35,vUv.x)*smoothstep(1.0,0.65,vUv.x); float fade = smoothstep(0.0,0.9,vUv.y); float flicker = 0.75 + 0.25*sin(uTime*0.6 + vUv.x*6.0); gl_FragColor = vec4(vec3(0.85,0.97,1.0), edge*fade*0.09*flicker*uSun); }',
   });
   const r = rng(5);
   for (let i = 0; i < count; i++) {

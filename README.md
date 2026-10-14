@@ -1,8 +1,14 @@
-# Ocean Explorer — Belize: The Living Reef
+# Ocean Explorer — Belize
 
-A teacher-led, browser-based reef expedition for a classroom display. A class explores a Belize-inspired reef, seagrass meadow and sandy seabed, inspects five organisms, connects food relationships, predicts the effect of losing shelter, and explains a conservation choice.
+Teacher-led, browser-based reef expeditions for a classroom display, set in a Belize-inspired reef, seagrass meadow and sandy seabed.
 
-**Guiding question:** What makes this reef a home?
+| Expedition | Guiding question | Levels |
+|---|---|---|
+| **1. The Living Reef** | What makes this reef a home? | Grades 3–6 lesson, Explore, and the *Can you find…?* game for TK–2 |
+| **2. The Changing Reef** | What’s changing on Belize’s reef? | Grades 3–6, and Little Explorers (TK–2) |
+
+In Expedition 1 a class inspects five organisms, connects food relationships, predicts the effect of losing shelter, and explains a conservation choice. Expedition 2 is about sargassum, trash and warming water (see below).
+
 **Lesson framework:** explore → predict → manipulate → observe → explain.
 
 > **Content status: draft.** The species facts and food relationships are sourced but still need review by a qualified person. `npm run release-check` fails until that review is recorded (see [docs/content-review.md](docs/content-review.md)).
@@ -22,7 +28,7 @@ Useful URLs:
 
 | URL | Opens |
 |---|---|
-| `/` | Entry screen (Start lesson / Explore) |
+| `/` | Entry screen: choose an expedition (or resume) |
 | `/#guide` | The teacher guide, ready to print |
 | `/#record` | Record the narration in your own voice |
 | `/?presentation=static` | Illustrations instead of 3D (also available in Settings) |
@@ -115,9 +121,26 @@ Twenty animals can be tapped, across all three stops: the five featured organism
 
 **Can you find…?** (start screen or Explore) is a turn-taking game for the youngest classes. The board asks for one animal at a time. Any tap gets a response, and the right one is celebrated with a close-up. Hint, Hear it again and Skip this animal keep it moving. Spotter content lives in `src/content/findables.ts` with sources and review status, like the featured organisms.
 
+## Expedition 2: The Changing Reef
+
+What’s harming Belize’s reef, told the way the research tells it. Both levels share the same reef and work in 3D or with the illustrations.
+
+**Grades 3–6** (about 10 minutes, six steps):
+
+1. **Briefing.** Who has seen seaweed piled on a beach? This is a good moment for the teacher’s own photos or stories from Belize.
+2. **The belt.** A simplified map of the Atlantic shows the great sargassum belt before 2011, in 2018 and at the May 2025 record, drawn to scale between the two years. Animated currents carry it west to Belize.
+3. **What feeds it?** The class records a prediction first, then turns *extra nutrients*, *warmer water* and *ocean currents* on and off and watches the map (labelled **Simplified example**). The reveal follows the research: nutrients from land are a big part, with currents and warmer water too, and scientists are still investigating. Warming is never presented as the only cause.
+4. **Our reef.** A toggle brings thick mats in overhead. Light dims and the caustics fade, and piles settle on the sand. Each stop explains what the shade does to coral and seagrass and why rotting piles are a problem. Then comes the twist: in the open ocean, sargassum is a home for baby turtles. Twelve pieces of trash (bags, bottles, a ghost net, fishing line) can be tapped to clean them up, each with a sourced fact.
+5. **Explain.** Two checked questions, plus a discussion question with a rubric.
+6. **Recap.** Key ideas, a completed / attempted / skipped summary, and **Not just Belize**: the 2026 Southern California marine heatwave that brought warm-water fish and sharks north.
+
+**Little Explorers (TK–2)** (five steps): a short story; **clean up**, where children take turns tapping the trash across all three stops; **seaweed**, where they see it get darker under the mats; **helpers**, four big cards with ways to help; and a celebration that ends with “look, don’t touch”.
+
+Content lives in `src/content/changing.ts`, with every claim sourced and marked draft until reviewed. The map is drawn in code (`src/scene/MapView.ts`), and the 3D mats and trash are in `src/scene/changing3d.ts`.
+
 ## Your own voice
 
-The narration can use recordings of your own voice in place of the browser voice: 14 short lines, about 3½ minutes in total. Open `/#record` (or **Teacher guide → Record narration**) to record them line by line in the browser. See [docs/narration.md](docs/narration.md) for the full script and how recordings are added.
+The narration can use recordings of your own voice in place of the browser voice. The 14 Expedition 1 lines are recorded; the game, animal-fact and Expedition 2 lines still use the browser voice until they are recorded. Open `/#record` (or **Teacher guide → Record narration**) to record them line by line in the browser. See [docs/narration.md](docs/narration.md) for the full script and how recordings are added.
 
 ## Optional video segments
 

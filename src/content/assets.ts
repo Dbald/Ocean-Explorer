@@ -30,6 +30,8 @@ export const assets: AssetRecord[] = [
   { id: 'proc-brain-coral', description: '3D brain coral boulders built from procedural geometry', ...project },
   { id: 'proc-spotters', description: '3D spotter animals (shark, rays, lobster, urchin, eel, octopus, fish, sea star, sea cucumber, hermit crab), procedural', ...project },
   { id: 'svg-spotters', description: 'Static illustrations of the spotter animals (inline SVG)', ...project },
+  { id: 'proc-changing', description: '3D sargassum mats and trash (bag, bottle, net, fishing line) for Expedition 2, procedural', ...project },
+  { id: 'svg-changing', description: 'Simplified Atlantic map of the sargassum belt, and illustrated sargassum and trash (inline SVG)', ...project },
   { id: 'proc-environment', description: 'Water, light, seafloor, seagrass, rocks and particles (procedural)', ...project },
   {
     id: 'audio-narration',

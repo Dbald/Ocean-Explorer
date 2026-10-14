@@ -153,7 +153,7 @@ test('the teacher guide is complete and opens from a link', async ({ page }) => 
   await page.goto('/?presentation=static#guide');
   const guide = page.locator('#guide');
   await expect(guide).toBeVisible();
-  for (const heading of ['Before class', 'Lesson sequence', 'Can you find…? (great for TK–2)', 'Vocabulary', 'Answers', 'Organisms and relationships', 'Accessibility and classroom controls', 'Transcript', 'Sources and credits']) {
+  for (const heading of ['Before class', 'Lesson sequence', 'Can you find…? (great for TK–2)', 'The Changing Reef', 'Grades 3–6 sequence', 'Little Explorers (TK–2) sequence', 'Vocabulary', 'Answers', 'Organisms and relationships', 'Accessibility and classroom controls', 'Transcript', 'Sources and credits']) {
     await expect(guide.getByRole('heading', { name: heading, exact: true })).toBeVisible();
   }
   await expect(guide).toContainText('Links an action, a habitat feature and an organism’s need');
@@ -280,4 +280,91 @@ test('in 3D, a bonus animal gets its own close-up', async ({ page }) => {
   await press(page, 'Explore');
   await page.locator('.spotter-list').getByRole('button', { name: 'Nurse shark' }).click();
   await expect(page.locator('#stage canvas')).toHaveAttribute('data-view', 'closeup:nurse-shark');
+});
+
+test('Expedition 2 (Grades 3–6): map, prediction before the model, reef comparison, cleanup and recap — keyboard only', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Grades 3–6');
+  await expect(page.locator('.step-indicator')).toHaveText('Expedition 2 · Step 1 of 6: Briefing');
+  await expect(page.locator('.map-view')).toBeHidden();
+  await page.keyboard.press('n');
+  // The belt: the map appears and each year changes it.
+  await expect(page.locator('.map-view')).toBeVisible();
+  await expect(page.locator('.map-badge-text')).toHaveText('Before 2011');
+  await press(page, '2025');
+  await expect(page.locator('.map-badge-text')).toHaveText('2025');
+  await expect(dock(page)).toContainText('38 million tons');
+  await page.keyboard.press('n');
+  // What feeds it: the model opens only after the class predicts.
+  await expect(dock(page).getByRole('button', { name: /^Extra nutrients: on/ })).toHaveCount(0);
+  await expect(dock(page).getByRole('button', { name: 'Record class prediction' })).toBeDisabled();
+  await press(page, 'Warmer water');
+  await press(page, 'Record class prediction');
+  await expect(page.locator('.map-badge-text')).toHaveText('Simplified example');
+  await press(page, /^Ocean currents: on/);
+  await expect(dock(page)).toContainText('doesn’t reach Belize');
+  await expect(dock(page)).toContainText('scientists are still investigating');
+  await page.keyboard.press('n');
+  // Our reef: the map steps aside; sargassum and trash appear in the illustration.
+  await expect(page.locator('.map-view')).toBeHidden();
+  await expect(page.locator('.litter-spot')).toHaveCount(5);
+  await press(page, 'Too much sargassum');
+  await expect(page.locator('.sargassum-overlay')).toHaveCount(1);
+  await expect(dock(page)).toContainText('But here’s a twist');
+  await page.locator('.litter-spot').first().focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.litter-spot')).toHaveCount(4);
+  await expect(page.locator('.cleanup-count')).toContainText('1 of 12');
+  await page.keyboard.press('n');
+  await press(page, 'Nutrients washing off land in rivers, plus dust in the wind');
+  await press(page, 'Submit answer');
+  await expect(dock(page).locator('.feedback.good')).toBeVisible();
+  await page.keyboard.press('n');
+  await expect(dock(page)).toContainText('Not just Belize');
+  await expect(dock(page).locator('.recap-completed')).toContainText('What feeds it');
+  // Only two of the three years were compared, so the belt is attempted, not completed.
+  await expect(dock(page).locator('.recap-attempted')).toContainText('The belt');
+  await expect(dock(page).locator('.recap-skipped')).toContainText('question 2');
+});
+
+test('Expedition 2 (Little Explorers): clean up every stop, see the seaweed, pick helpers', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Little Explorers (TK–2)');
+  await expect(page.locator('.step-indicator')).toHaveText('Little Explorers · Step 1 of 5: Story');
+  await page.keyboard.press('n');
+  for (const [stop, count] of [['1. Reef', 5], ['2. Seagrass meadow', 4], ['3. Sandy seabed', 3]] as const) {
+    await press(page, stop);
+    await expect(page.locator('.litter-spot')).toHaveCount(count);
+    // Children tap the pictures; animal buttons step aside while trash is out.
+    await expect(page.locator('.hotspot')).toHaveCount(0);
+    for (let i = 0; i < count; i++) await page.locator('.litter-spot').first().click();
+    await expect(page.locator('.litter-spot')).toHaveCount(0);
+  }
+  await expect(page.locator('.cleanup-count')).toContainText('12 of 12');
+  await expect(dock(page)).toContainText('The whole reef is clean');
+  await page.keyboard.press('n');
+  await press(page, 'Lots of seaweed');
+  await expect(page.locator('.sargassum-overlay')).toHaveCount(1);
+  await expect(dock(page)).toContainText('It’s darker!');
+  await page.keyboard.press('n');
+  await dock(page).getByRole('button', { name: /Put trash in a bin/ }).click();
+  await dock(page).getByRole('button', { name: /Look, don’t touch/ }).click();
+  await expect(dock(page).locator('.helper-card.is-done')).toHaveCount(2);
+  await page.keyboard.press('n');
+  await expect(dock(page)).toContainText('You cleaned 12 of 12 pieces of trash and found 2 ways to help');
+  // A refresh offers to resume this expedition.
+  await page.reload();
+  await expect(page.getByRole('button', { name: /^Resume The Changing Reef \(step 5/ })).toBeVisible();
+});
+
+test('in 3D, the sargassum mats and trash appear only in Expedition 2', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#loading')).toBeHidden({ timeout: 30_000 });
+  await press(page, 'Grades 3–6');
+  await dock(page).getByRole('button', { name: '4. Our reef' }).click();
+  await press(page, 'Too much sargassum');
+  await dock(page).locator('summary', { hasText: 'Choose from a list' }).click();
+  await dock(page).getByRole('button', { name: 'Pick up the old fishing net' }).click();
+  await expect(page.locator('.cleanup-count')).toContainText('1 of 12');
+  await expect(page.locator('#caption')).toContainText('Old fishing net');
 });
