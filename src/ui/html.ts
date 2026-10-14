@@ -1,3 +1,5 @@
+import { photoFor, photoSrc, type ReferencePhoto } from '../content/photos.ts';
+
 /** Escapes text for safe interpolation into HTML templates. */
 export function esc(value: unknown): string {
   return String(value ?? '')
@@ -39,4 +41,17 @@ export function foodArrow(food: string, consumer: string): string {
 /** A shelter relationship, drawn differently from feeding. */
 export function shelterLink(shelter: string, user: string): string {
   return `<span class="shelter-link"><span class="chip">${esc(shelter)}</span><span class="dash" aria-hidden="true">⋯⌂⋯</span><span class="sr-only"> gives shelter to </span><span class="chip">${esc(user)}</span></span>`;
+}
+
+/**
+ * A real reference photo with its credit, or nothing if the subject has none.
+ * It sits inside a panel, never over the scene; if the file fails to load it hides itself.
+ */
+export function refPhoto(subject: string, opts: { caption?: string; size?: 'card' | 'small'; list?: ReferencePhoto[] } = {}): string {
+  const p = photoFor(subject, opts.list);
+  if (!p) return '';
+  return `<figure class="ref-photo ${opts.size ?? 'card'}" data-photo="${esc(subject)}">
+    <div class="ref-photo-frame"><img src="${esc(photoSrc(p))}" alt="${esc(p.alt)}" decoding="async" onerror="this.closest('figure').hidden=true"><span class="ref-badge">Real photo</span></div>
+    <figcaption>${opts.caption ? `<span>${esc(opts.caption)}</span> ` : ''}<span class="ref-credit">${esc(p.credit)} · <a href="${esc(p.sourceUrl)}" target="_blank" rel="noopener">${esc(p.license)}</a></span></figcaption>
+  </figure>`;
 }

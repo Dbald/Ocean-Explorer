@@ -139,6 +139,10 @@ What’s harming Belize’s reef, told the way the research tells it. Both level
 
 Content lives in `src/content/changing.ts`, with every claim sourced and marked draft until reviewed. The map is drawn in code (`src/scene/MapView.ts`), and the 3D mats and trash are in `src/scene/changing3d.ts`.
 
+## Real reference photos
+
+The scene is illustrated, so animal cards, the *Can you find…?* "You found it!" screen and Expedition 2 have a slot for a **real photo**: the actual animal, or real sargassum floating and piled on a beach. Photos sit in the side panel, labelled *Real photo* with their credit and licence, and never cover the reef. Subjects without a photo show none. See [docs/photos.md](docs/photos.md) for the 22 photos wanted, which licences are safe, and how to add one.
+
 ## Your own voice
 
 The narration can use recordings of your own voice in place of the browser voice. The 14 Expedition 1 lines are recorded; the game, animal-fact and Expedition 2 lines still use the browser voice until they are recorded. Open `/#record` (or **Teacher guide → Record narration**) to record them line by line in the browser. See [docs/narration.md](docs/narration.md) for the full script and how recordings are added.
@@ -161,6 +165,7 @@ The app checks for each file at startup and offers a **Message from Devin** butt
 - [docs/platform-decision.md](docs/platform-decision.md): Atlas reuse assessment and the platform decision
 - [docs/pilot-checklist.md](docs/pilot-checklist.md): technical rehearsal log and pilot plan
 - [docs/narration.md](docs/narration.md): narration script and how to add your recordings
+- [docs/photos.md](docs/photos.md): real reference photos — what's wanted and how to add them
 
 ## Privacy
 

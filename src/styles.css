@@ -415,6 +415,16 @@ details[open] > summary::before { transform: rotate(90deg); }
   .small-btn, .step-btn, .subtab, details summary { min-height: 44px; }
 }
 
+/* ── Real reference photos ───────────────────────────────────────────────── */
+.ref-photo { margin: 0.5em 0 0.7em; }
+.ref-photo-frame { position: relative; border-radius: 12px; overflow: hidden; background: var(--panel-2); border: 2px solid var(--line); }
+.ref-photo img { display: block; width: 100%; height: auto; max-height: 34vh; object-fit: cover; }
+.ref-photo.small img { max-height: 22vh; }
+.ref-badge { position: absolute; left: 0.5em; top: 0.5em; background: rgba(0, 0, 0, 0.72); color: #fff; font-weight: 800; font-size: 0.7em; padding: 0.15em 0.6em; border-radius: 999px; }
+.ref-photo figcaption { font-size: 0.8em; margin-top: 0.25em; }
+.ref-credit { color: var(--ink-soft); font-size: 0.85em; }
+.ref-credit a { color: inherit; }
+
 /* ── Expedition 2: The Changing Reef ─────────────────────────────────────── */
 .expeditions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15em), 1fr)); gap: var(--gap); margin: 0.6em 0; }
 .expedition { background: var(--panel-2); border: 2px solid var(--line); border-radius: 16px; padding: 0.7em 0.9em; }

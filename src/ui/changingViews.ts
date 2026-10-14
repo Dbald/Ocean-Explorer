@@ -24,7 +24,7 @@ import { COMPOSITE_NOTICE } from '../content/lesson.ts';
 import { habitatById } from '../content/habitats.ts';
 import { changingSummary, choice, type LessonState } from '../lesson/controller.ts';
 import type { MapState } from '../scene/MapView.ts';
-import { btn, esc } from './html.ts';
+import { btn, esc, refPhoto } from './html.ts';
 import { choiceItem, stopNav, tabs } from './views.ts';
 
 export const changingStep = (state: LessonState): ChangingStep => {
@@ -111,6 +111,7 @@ function briefingBody(step: ChangingStep) {
   return `<p class="question">${esc(CHANGING_QUESTION)}</p>
     <p>${esc(CHANGING_OBJECTIVE)}</p>
     <ul class="prompts">${step.prompts.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
+    ${refPhoto('sargassum-beach', { caption: 'Sargassum piled up on a beach.' })}
     <p class="small muted">Teacher: if you have your own photos or stories from Belize, this is a good moment to share them.</p>
     <p class="notice small">${esc(COMPOSITE_NOTICE)}</p>`;
 }
@@ -123,6 +124,7 @@ function beltBody(state: LessonState) {
     </div>
     <p class="lead" role="status">${esc(snap.text)}</p>
     <p>Ocean currents carry the floating sargassum west across the Atlantic and into the Caribbean Sea, all the way to Belize.</p>
+    ${refPhoto('sargassum', { caption: 'Up close: sargassum is a brown seaweed that floats.', size: 'small' })}
     ${c.beltSeen.length < beltSnapshots.length ? '<p class="small muted">Compare all three years.</p>' : ''}
     <p class="small muted">A simplified drawing based on satellite studies, not a live satellite map.</p>`;
 }
@@ -162,6 +164,7 @@ function reefBody(state: LessonState) {
   return `${stopNav(state)}
     ${sargassumToggle(state, ['Clear water', 'Too much sargassum'])}
     <p class="lead" role="status">${c.sargassum ? esc(reefEffects[state.stop]) : 'Clear water: sunlight reaches the coral and the seagrass.'}</p>
+    ${c.sargassum ? (state.stop === 'sand' ? refPhoto('sargassum-beach', { caption: 'Sargassum piled up on a beach.', size: 'small' }) : refPhoto('sargassum', { caption: 'Real sargassum.', size: 'small' })) : ''}
     ${
       c.sargassumSeen
         ? `<div class="twist"><p class="eyebrow">${esc(sargassumTwist.title)}</p><p>${esc(sargassumTwist.text)}</p>${btn('Listen', 'say', { arg: 'ch-twist', cls: 'ghost small-btn', icon: '🔊' })}</div>`
@@ -231,6 +234,7 @@ function recapBody(state: LessonState) {
 function littleStoryBody() {
   return `<div class="little-hero" aria-hidden="true">🐢 🐠 🪸</div>
     <p class="lead">Something is changing in Belize’s ocean. There is trash in the water, and lots of brown seaweed floating in.</p>
+    ${refPhoto('sargassum-beach', { caption: 'Brown seaweed on a beach.' })}
     <p class="big-line">Let’s help the reef!</p>
     <p class="small muted">Teacher: if you have photos from Belize, show them now.</p>`;
 }
@@ -240,6 +244,7 @@ function littleSeaweedBody(state: LessonState) {
   return `${stopNav(state)}
     ${sargassumToggle(state, ['No seaweed', 'Lots of seaweed'])}
     <p class="big-line" role="status">${on ? 'It’s darker! Coral and seagrass need sunlight.' : 'Sunny and bright!'}</p>
+    ${refPhoto('sargassum', { caption: 'This is real sargassum.' })}
     ${state.changing.sargassumSeen ? `<div class="twist"><p>Out in the deep ocean, this seaweed is a home for baby sea turtles. 🐢</p></div>` : ''}`;
 }
 

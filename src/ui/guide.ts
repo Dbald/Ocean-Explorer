@@ -40,6 +40,7 @@ import {
   videoSegments,
 } from '../content/lesson.ts';
 import { narration, narrationById } from '../content/narration.ts';
+import { PHOTO_SUBJECTS, photoFor, referencePhotos } from '../content/photos.ts';
 import { organisms } from '../content/organisms.ts';
 import { sources } from '../content/sources.ts';
 import { esc, foodArrow, shelterLink } from './html.ts';
@@ -213,6 +214,17 @@ export function renderGuide(availableVideos: string[]) {
       <p class="small">No institutional affiliation or endorsement is implied.</p>
       <h3>Asset credits</h3>
       <ul class="small">${assets.map((a) => `<li>${esc(a.description)} — ${esc(a.creator)}; ${esc(a.license)}.</li>`).join('')}</ul>
+      <h3>Real photos</h3>
+      ${
+        referencePhotos.length
+          ? `<ul class="small">${referencePhotos.map((p) => `<li>${esc(PHOTO_SUBJECTS.find((x) => x.id === p.subject)?.label ?? p.subject)}: ${esc(p.credit)}, ${esc(p.license)} — <a href="${esc(p.sourceUrl)}" target="_blank" rel="noopener">source</a>.</li>`).join('')}</ul>`
+          : ''
+      }
+      <p class="small">Real photos appear in the animal cards, the game and Expedition 2. Still without a photo: ${esc(
+        PHOTO_SUBJECTS.filter((x) => !photoFor(x.id))
+          .map((x) => x.label)
+          .join(', ') || 'none',
+      )}.</p>
       <h3>Privacy</h3>
       <p class="small">No accounts, names, recordings, advertising or tracking. Only lesson progress and display settings are stored, on this device.</p>
     </section>

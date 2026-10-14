@@ -21,7 +21,7 @@ import { isVerified, organismById, organisms } from '../content/organisms.ts';
 import { sourceById } from '../content/sources.ts';
 import type { FoodChoiceItem, HabitatId, VideoSegment } from '../content/types.ts';
 import { activitySummary, choice, currentFindTarget, FEATURED_COUNT, featuredDiscovered, predictionLabel, SHELTER_EXIT_ID, stepIndex, type LessonState } from '../lesson/controller.ts';
-import { btn, esc, foodArrow, shelterLink } from './html.ts';
+import { btn, esc, foodArrow, refPhoto, shelterLink } from './html.ts';
 
 export function nameOf(id: string): string {
   return organismById.get(id)?.commonName ?? foodResourceById.get(id)?.name ?? id;
@@ -378,7 +378,7 @@ export function renderFindDock(state: LessonState) {
   const found = f.found.includes(targetId);
   const tapped = f.lastTap && !f.lastTap.correct ? findableById.get(f.lastTap.id) : undefined;
   const body = found
-    ? `<p class="find-line" role="status">${esc(target.line)}</p>`
+    ? `<p class="find-line" role="status">${esc(target.line)}</p>${refPhoto(target.id, { caption: `A real ${target.name}.` })}`
     : `${tapped ? `<p class="feedback retry find-feedback" role="status">That’s the <strong>${esc(tapped.title.toLowerCase())}</strong>! Keep looking for the ${esc(target.name)}.</p>` : '<p class="muted">Come up and tap it on the screen.</p>'}
        <div class="row">
          ${btn('Hear it again', 'find-again', { cls: 'secondary', icon: '🔊' })}
@@ -435,6 +435,7 @@ export function renderCard(id: string) {
       </div>
       ${btn('Close', 'close-card', { cls: 'icon-btn', aria: 'Close card', icon: '✕' })}
     </div>
+    ${refPhoto(id)}
     <p>${esc(o.role)}</p>
     <p class="observe"><strong>Observe:</strong> ${esc(o.observe)}</p>
     ${eats.length || eatenBy.length || shelter.length ? `<div class="web compact">
@@ -466,6 +467,7 @@ function renderSpotterCard(id: string) {
       </div>
       ${btn('Close', 'close-card', { cls: 'icon-btn', aria: 'Close card', icon: '✕' })}
     </div>
+    ${refPhoto(id)}
     <p class="find-line">${esc(f.line)}</p>
     <p class="small muted">Selecting an animal here is for observing. In real life, we watch wildlife without touching it.</p>
     <p class="small muted">Sources: ${sources.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.publisher)}</a>`).join(', ')}</p>
