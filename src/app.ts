@@ -11,6 +11,7 @@ import { findNarrationId, findableById, spotterNarrationId } from './content/fin
 import { narrationById } from './content/narration.ts';
 import { recordedAudioFor } from './content/recordings.ts';
 import { organismById, organisms } from './content/organisms.ts';
+import { LIVE_PHASE, upcomingPhases } from './content/phases.ts';
 import type { HabitatId, StepId, VideoSegment } from './content/types.ts';
 import { currentFindTarget, initialState, reduce, type Action, type LessonState, type Mode } from './lesson/controller.ts';
 import { clearAll, loadPreferences, loadSession, savePreferences, saveSession, type Preferences } from './lesson/store.ts';
@@ -34,6 +35,8 @@ export class App {
   private state: LessonState;
   /** A saved session from a previous visit, offered as "Resume" on the entry screen. */
   private resumable: LessonState | null = null;
+  /** Whether the home panel is showing; hidden, the reef fills the screen. */
+  private homeOpen = true;
   private prefs: Preferences;
   private paused = false;
   private muted = false;
@@ -82,7 +85,9 @@ export class App {
     this.applyPrefs();
     this.bindEvents();
     this.mapView = new MapView($('stage'));
-    new ResizeObserver(() => this.updateInsets()).observe($('dock'));
+    const insets = new ResizeObserver(() => this.updateInsets());
+    insets.observe($('dock'));
+    insets.observe($('entry'));
     window.addEventListener('resize', () => this.updateInsets());
     this.renderAll();
     this.startPresentation();
@@ -183,6 +188,12 @@ export class App {
   private onTap(id: string) {
     if (isLitterId(id)) return this.cleanLitter(id);
     this.scene3d?.react(id);
+    // On the home screen, tapping an animal dives straight into Explore with its card open.
+    if (this.state.mode === null) {
+      this.paused = false;
+      this.resumable = null;
+      this.dispatch({ type: 'start', mode: 'explore' });
+    }
     if (this.state.mode === 'find') return this.findTap(id);
     // In Expedition 2 animals still say hello, without opening a card over the activity.
     if (this.state.mode === 'changing') return this.narrate(findableById.has(id) ? spotterNarrationId(id) : (organismById.get(id)?.narrationId ?? ''), true);
@@ -475,39 +486,94 @@ export class App {
             ? `Resume ${CHANGING_TITLE} (step ${r.changing.step + 1}: ${stepsFor(r.changing.level)[r.changing.step]?.label ?? ''})`
             : 'Resume exploring';
     const draft = organisms.some((o) => o.review.status !== 'reviewed');
+    entry.dataset.open = String(this.homeOpen);
+
+    // Collapsed: the reef gets the whole screen and one button brings the lessons back.
+    if (!this.homeOpen) {
+      this.patch(
+        entry,
+        `<div class="home-peek">
+          ${btn('Lessons', 'home-toggle', { cls: 'primary big', key: 'home-toggle', icon: '☰', aria: 'Show lessons' })}
+        </div>`,
+      );
+      this.updateInsets();
+      return;
+    }
+
+    const soon = upcomingPhases
+      .map(
+        (p, i) => `<section class="phase is-soon" aria-labelledby="phase-${esc(p.id)}-title">
+          <div class="phase-head">
+            <span class="phase-num">Phase ${LIVE_PHASE.number + i + 1}</span>
+            <span class="soon-badge">Coming soon</span>
+          </div>
+          <h2 id="phase-${esc(p.id)}-title">${esc(p.place)}</h2>
+          <p class="small muted">${esc(p.teaser)}</p>
+        </section>`,
+      )
+      .join('');
+
     this.patch(
       entry,
-      `<div class="entry-box wide">
-        <p class="eyebrow">${esc(PRODUCT_NAME)} · Belize</p>
-        <h1 id="entry-title">Choose an expedition</h1>
-        ${r ? `<div class="row entry-actions">${btn(resumeLabel, 'resume', { cls: 'primary big', key: 'entry-resume', icon: '↩' })}</div>` : ''}
-        <div class="expeditions">
-          <section class="expedition" aria-labelledby="exp1-title">
-            <p class="eyebrow">Expedition 1</p>
-            <h2 id="exp1-title">${esc(LESSON_TITLE)}</h2>
-            <p class="question">${esc(GUIDING_QUESTION)}</p>
-            <p class="small">${esc(OBJECTIVE)}</p>
-            <div class="row entry-actions">
-              ${btn('Start lesson', 'start', { arg: 'lesson', cls: r ? 'secondary big' : 'primary big', key: 'entry-start', icon: '▶' })}
-              ${btn('Explore', 'start', { arg: 'explore', cls: 'secondary big', key: 'entry-explore' })}
-              ${btn('Can you find…?', 'find', { cls: 'secondary big', key: 'entry-find', icon: '🔍' })}
-            </div>
-          </section>
-          <section class="expedition" aria-labelledby="exp2-title">
-            <p class="eyebrow">Expedition 2</p>
-            <h2 id="exp2-title">${esc(CHANGING_TITLE)}</h2>
-            <p class="question">${esc(CHANGING_QUESTION)}</p>
-            <p class="small">Sargassum, trash and warming water — and how people can help.</p>
-            <div class="row entry-actions">
-              ${btn('Grades 3–6', 'start-changing', { arg: 'older', cls: 'secondary big', key: 'entry-ch-older', icon: '▶' })}
-              ${btn('Little Explorers (TK–2)', 'start-changing', { arg: 'little', cls: 'secondary big', key: 'entry-ch-little', icon: '▶' })}
-            </div>
-          </section>
+      `<div class="home-panel">
+        <div class="home-head">
+          <div>
+            <p class="eyebrow">${esc(PRODUCT_NAME)}</p>
+            <h1 id="entry-title">Choose an expedition</h1>
+          </div>
+          ${btn('Hide lessons', 'home-toggle', { cls: 'ghost icon-btn home-hide', key: 'home-toggle', icon: '✕', aria: 'Hide lessons and show the whole reef' })}
         </div>
-        <p class="small muted">Sound starts only after you choose. Captions are on. About 10 minutes each, teacher-led.</p>
-        <p class="small muted">${esc(COMPOSITE_NOTICE)}${draft ? ' Draft content — scientific review pending.' : ''}</p>
+        <div class="home-scroll">
+          <p class="tap-hint"><span aria-hidden="true">👆</span> Tap any animal on the reef to meet it.</p>
+          ${r ? `<div class="row entry-actions">${btn(resumeLabel, 'resume', { cls: 'primary big', key: 'entry-resume', icon: '↩' })}</div>` : ''}
+
+          <section class="phase is-live" aria-labelledby="phase-live-title">
+            <div class="phase-head">
+              <span class="phase-num">Phase ${LIVE_PHASE.number}</span>
+              <span class="live-badge">Now exploring</span>
+            </div>
+            <h2 id="phase-live-title">${esc(LIVE_PHASE.place)}</h2>
+            <p class="small muted">${esc(LIVE_PHASE.teaser)}</p>
+
+            <article class="expedition" aria-labelledby="exp1-title">
+              <p class="eyebrow">Expedition 1</p>
+              <h3 id="exp1-title">${esc(LESSON_TITLE)}</h3>
+              <p class="question">${esc(GUIDING_QUESTION)}</p>
+              <details class="exp-more" data-key="exp1-more"><summary>What students learn</summary><p class="small">${esc(OBJECTIVE)}</p></details>
+              <div class="row entry-actions">
+                ${btn('Start lesson', 'start', { arg: 'lesson', cls: r ? 'secondary big' : 'primary big', key: 'entry-start', icon: '▶' })}
+                ${btn('Explore', 'start', { arg: 'explore', cls: 'secondary big', key: 'entry-explore' })}
+                ${btn('Can you find…?', 'find', { cls: 'secondary big', key: 'entry-find', icon: '🔍' })}
+              </div>
+            </article>
+
+            <article class="expedition" aria-labelledby="exp2-title">
+              <p class="eyebrow">Expedition 2</p>
+              <h3 id="exp2-title">${esc(CHANGING_TITLE)}</h3>
+              <p class="question">${esc(CHANGING_QUESTION)}</p>
+              <p class="small">Sargassum, trash and warming water — and how people can help.</p>
+              <div class="row entry-actions">
+                ${btn('Grades 3–6', 'start-changing', { arg: 'older', cls: 'secondary big', key: 'entry-ch-older', icon: '▶' })}
+                ${btn('Little Explorers (TK–2)', 'start-changing', { arg: 'little', cls: 'secondary big', key: 'entry-ch-little', icon: '▶' })}
+              </div>
+            </article>
+          </section>
+
+          ${soon}
+
+          <p class="small muted">Sound starts only after you choose. Captions are on. About 10 minutes each, teacher-led.</p>
+          <p class="small muted">${esc(COMPOSITE_NOTICE)}${draft ? ' Draft content — scientific review pending.' : ''}</p>
+        </div>
       </div>`,
     );
+    this.updateInsets();
+  }
+
+  /** Showing or hiding the home panel; the reef reframes to use the space. */
+  private toggleHome() {
+    this.homeOpen = !this.homeOpen;
+    this.renderEntry();
+    this.focusKey('home-toggle');
   }
 
   /** Tells the scene how much of the screen the lesson panel covers. */
@@ -515,8 +581,11 @@ export class App {
     const dock = $('dock');
     let right = 0;
     let bottom = 0;
-    if (!dock.hidden) {
-      const r = dock.getBoundingClientRect();
+    // On the home screen the lesson panel plays the dock's part, so the reef frames beside it.
+    const home = $('entry').hidden ? null : $('entry').querySelector<HTMLElement>('.home-panel');
+    const panel = !dock.hidden ? dock : home;
+    if (panel) {
+      const r = panel.getBoundingClientRect();
       const side = r.width < window.innerWidth * 0.7;
       if (side) right = window.innerWidth - r.left;
       else bottom = window.innerHeight - r.top;
@@ -846,8 +915,11 @@ export class App {
         this.startAudio();
         return this.afterChange(prev, { type: 'goto', step: this.state.step });
       }
+      case 'home-toggle':
+        return this.toggleHome();
       case 'home':
         this.stopNarration();
+        this.homeOpen = true;
         this.resumable = this.state;
         return this.dispatch({ type: 'exit' });
       case 'stop':
