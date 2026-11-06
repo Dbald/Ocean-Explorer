@@ -21,6 +21,8 @@ import { renderGuide, renderTranscript, SHORTCUTS } from './ui/guide.ts';
 import { btn, esc } from './ui/html.ts';
 import { changingStep, mapStateFor, remainingLitter, renderChangingDock } from './ui/changingViews.ts';
 import { findOrder, renderCard, renderExploreDock, renderFindDock, renderLessonDock } from './ui/views.ts';
+import { CodexBridge, LESSON_ID, eventsFor, isEmbedded, type FromCodex } from './embed/bridge.ts';
+import { findablesAt } from './content/findables.ts';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -53,10 +55,20 @@ export class App {
   private returnFocus: HTMLElement | null = null;
   private perfTimer = 0;
   private reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+  /** Set when running inside The Codex (`?embed=codex` in a frame). */
+  private bridge: CodexBridge | null = null;
 
   constructor() {
     this.prefs = loadPreferences(this.reducedMotion);
     const params = new URLSearchParams(location.search);
+    if (isEmbedded()) {
+      document.documentElement.dataset.embed = 'codex';
+      this.bridge = new CodexBridge({
+        onCommand: (cmd) => this.onCodexCommand(cmd),
+        extraOrigins: import.meta.env.VITE_CODEX_ORIGINS ?? '',
+        dev: import.meta.env.DEV,
+      });
+    }
     const forced = params.get('presentation');
     if (forced === 'static' || forced === '3d') this.prefs.presentation = forced;
     const saved = loadSession();
@@ -93,7 +105,48 @@ export class App {
     $('boot-error').hidden = true;
     if (location.hash === '#guide') this.openGuide();
     if (location.hash === '#record') void this.openRecorder();
+    if (this.bridge) {
+      this.bridge.send({ type: 'ready', lesson: LESSON_ID, labels: this.prefs.labels });
+      // The Codex can open straight into an activity: ?embed=codex&start=lesson
+      const start = new URLSearchParams(location.search).get('start');
+      if (start === 'lesson') this.onCodexCommand({ type: 'start', mode: 'lesson', resume: true });
+    }
   }
+
+  /** A command from The Codex. Only ever arrives in embedded mode, from a trusted origin. */
+  private onCodexCommand(cmd: FromCodex) {
+    switch (cmd.type) {
+      case 'start':
+        if (cmd.resume && this.resumable?.mode === cmd.mode) return this.handleAction('resume', undefined, document.body);
+        if (this.state.mode === cmd.mode) return;
+        return this.handleAction('start', cmd.mode, document.body);
+      case 'set_labels':
+        return this.setLabels(cmd.on, false);
+      case 'go_to_step':
+        if (this.state.mode === 'lesson') this.dispatch({ type: 'goto', step: cmd.step });
+        return;
+      case 'pause_narration':
+        if (!this.paused) this.togglePause();
+        return;
+    }
+  }
+
+  /** Name labels on the creatures: a preference, also switchable from The Codex. */
+  private setLabels(on: boolean, announce: boolean) {
+    if (this.prefs.labels === on) return;
+    this.prefs.labels = on;
+    savePreferences(this.prefs);
+    this.syncScene();
+    this.refreshSettings();
+    if (announce) this.bridge?.send({ type: 'labels_changed', on });
+  }
+
+  /** Labels show everywhere except the "Can you find…?" game, where they would give the answers away. */
+  private labelsVisible() {
+    return this.prefs.labels && this.state.mode !== 'find';
+  }
+
+  private titleOf = (id: string) => findableById.get(id)?.title ?? organismById.get(id)?.title ?? id;
 
   private recorder: { open(): void; close(): void; isOpen: boolean } | null = null;
 
@@ -123,6 +176,7 @@ export class App {
     const s = this.state;
     const stepChanged = prev.step !== s.step || prev.mode !== s.mode;
     if (action.type === 'start' || action.type === 'restart') this.startAudio();
+    if (this.bridge) for (const ev of eventsFor(prev, s, this.titleOf)) this.bridge.send(ev);
 
     this.renderAll();
     this.syncScene();
@@ -390,11 +444,13 @@ export class App {
     const litter = kind === 'reef' || kind === 'cleanup' ? remainingLitter(s) : null;
     this.scene3d?.setSargassum(sargassum);
     this.scene3d?.setLitter(litter);
+    // Name tags float over the creatures at the current stop, like the illustrations' labels.
+    this.scene3d?.setLabels(this.labelsVisible() && !t.shelter && !litter ? findablesAt(t.stop).map((f) => ({ id: f.id, title: f.title })) : null);
     this.staticScene?.render({
       stop: t.stop,
       selected: this.state.selectedOrganism,
       shelterView: t.shelter,
-      labels: this.state.mode !== 'find',
+      labels: this.labelsVisible(),
       hint: this.staticHint,
       sargassum,
       litter,
@@ -450,7 +506,8 @@ export class App {
       const i = Math.min(s.changing.step, steps.length - 1);
       parts.push(`<span class="step-indicator">${s.changing.level === 'little' ? 'Little Explorers' : 'Expedition 2'} · Step ${i + 1} of ${steps.length}: ${esc(steps[i].label)}</span>`);
     }
-    if (s.mode !== null) parts.push(btn('Home', 'home', { cls: 'top-btn', icon: '⌂' }));
+    // Inside The Codex, the course page is "home": its header handles leaving the lesson.
+    if (s.mode !== null && !this.bridge) parts.push(btn('Home', 'home', { cls: 'top-btn', icon: '⌂' }));
     parts.push(btn('Teacher guide', 'guide', { cls: 'top-btn', icon: '📘' }));
     parts.push(btn('Transcript', 'transcript', { cls: 'top-btn', icon: '☰' }));
     parts.push(btn('Settings', 'settings', { cls: 'top-btn', icon: '⚙' }));
@@ -626,6 +683,7 @@ export class App {
       ${choice('3D quality', 'quality', [['high', 'High'], ['low', 'Low']])}
       ${toggle('Ambient motion', 'ambientMotion', 'Swaying seagrass, swimming fish, light')}
       ${toggle('Instant camera moves', 'instantCamera')}
+      ${toggle('Creature name labels', 'labels', 'Hidden during “Can you find…?”')}
       ${toggle('Captions', 'captions')}
       ${toggle('Read aloud automatically', 'autoNarrate')}
       ${slider('Voice volume', 'voiceVolume')}
@@ -1002,6 +1060,7 @@ export class App {
         this.applyPrefs();
         return this.refreshSettings();
       case 'pref-toggle': {
+        if (a === 'labels') return this.setLabels(!this.prefs.labels, true);
         const key = a as 'ambientMotion' | 'instantCamera' | 'captions' | 'autoNarrate' | 'showPerformance';
         this.prefs[key] = !this.prefs[key];
         this.applyPrefs();

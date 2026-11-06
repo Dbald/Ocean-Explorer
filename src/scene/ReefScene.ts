@@ -86,6 +86,11 @@ export class ReefScene {
   /** Tap reactions in progress: elapsed seconds and total length. */
   private reactions = new Map<string, { t: number; duration: number }>();
   private hintId: string | null = null;
+  /** Name tags over the creatures: DOM buttons positioned from the 3D scene each frame. */
+  private labelLayer: HTMLDivElement | null = null;
+  private labelItems: { id: string; el: HTMLButtonElement; obj: THREE.Object3D; offset: THREE.Vector3 }[] = [];
+  private labelKey = '';
+  private labelVec = new THREE.Vector3();
   private ring!: THREE.Mesh;
   private hoverId: string | null = null;
   private selectedId: string | null = null;
@@ -527,6 +532,68 @@ export class ReefScene {
     this.canvas.dataset.view = closeup ? `closeup:${id}` : this.baseViewName;
   }
 
+  /**
+   * Shows tappable name tags for these creatures (null hides them). Each tag
+   * sits just above its animal and follows it as it moves or the camera turns.
+   */
+  setLabels(list: { id: string; title: string }[] | null) {
+    const key = list ? list.map((l) => l.id).join(',') : '';
+    if (key === this.labelKey) return;
+    this.labelKey = key;
+    if (!this.labelLayer) {
+      const layer = document.createElement('div');
+      layer.className = 'scene-labels';
+      layer.addEventListener('click', (e) => {
+        const tag = (e.target as HTMLElement).closest<HTMLElement>('[data-label-id]');
+        if (tag?.dataset.labelId) this.opts.onSelect(tag.dataset.labelId);
+      });
+      this.container.appendChild(layer);
+      this.labelLayer = layer;
+    }
+    this.labelLayer.replaceChildren();
+    this.labelItems = [];
+    for (const { id, title } of list ?? []) {
+      const obj = id === 'elkhorn-coral' && this.focusColony ? this.focusColony.group : this.organisms.get(id);
+      if (!obj) continue;
+      // Anchor: the top centre of the model, kept as an offset from its origin so moving animals carry their tag.
+      obj.updateWorldMatrix(true, true);
+      const box = new THREE.Box3().setFromObject(obj);
+      const top = new THREE.Vector3((box.min.x + box.max.x) / 2, box.max.y + 0.05, (box.min.z + box.max.z) / 2);
+      const offset = top.sub(obj.getWorldPosition(new THREE.Vector3()));
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'scene-label';
+      el.dataset.labelId = id;
+      el.textContent = title;
+      // The creature list is the keyboard and screen-reader route; tags are a tap shortcut on the reef itself.
+      el.setAttribute('aria-label', `${title}, in the reef`);
+      el.tabIndex = -1;
+      el.hidden = true;
+      this.labelLayer.appendChild(el);
+      this.labelItems.push({ id, el, obj, offset });
+    }
+    this.updateLabels();
+  }
+
+  private updateLabels() {
+    if (!this.labelItems.length) return;
+    const w = this.container.clientWidth;
+    const h = this.container.clientHeight;
+    // In a close-up the card is open and the framing says what it is: tags would only cover it.
+    const closeup = !!this.selectedId && !!this.closeupFor(this.selectedId);
+    const v = this.labelVec;
+    for (const item of this.labelItems) {
+      item.obj.getWorldPosition(v).add(item.offset);
+      const near = v.distanceTo(this.camera.position) < 18;
+      v.project(this.camera);
+      const show = !closeup && near && v.z < 1 && Math.abs(v.x) < 1.02 && Math.abs(v.y) < 1.02;
+      if (item.el.hidden === show) item.el.hidden = !show;
+      if (!show) continue;
+      item.el.style.transform = `translate(${((v.x + 1) / 2) * w}px, ${((1 - v.y) / 2) * h}px) translate(-50%, -100%)`;
+      item.el.classList.toggle('is-selected', item.id === this.selectedId);
+    }
+  }
+
   /** d = distance of the fish's centre from the rock face; nibble tilts the head. */
   private placeParrot(d: number, nibble: number) {
     const g = this.grazeTarget;
@@ -587,6 +654,9 @@ export class ReefScene {
     cancelAnimationFrame(this.raf);
     sunlight.value = 1;
     for (const t of Object.values(this.tex)) t?.dispose();
+    this.labelLayer?.remove();
+    this.labelLayer = null;
+    this.labelItems = [];
     disposeSkins();
     this.resizeObserver.disconnect();
     disposeTree(this.scene);
@@ -680,6 +750,7 @@ export class ReefScene {
     sharedTime.value = this.time;
     this.animate(Math.min(raw, 0.5));
     this.renderer.render(this.scene, this.camera);
+    this.updateLabels();
     this.frames++;
     const now = performance.now();
     if (now - this.fpsWindowStart >= 1000) {

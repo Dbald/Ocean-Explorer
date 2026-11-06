@@ -123,6 +123,31 @@ kbd { font-family: inherit; background: var(--panel-3); border: 1px solid var(--
 }
 .hotspot.is-selected { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
+/* Name tags over the 3D reef: same look as the illustration labels. The layer lets taps through except on the tags. */
+.scene-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.scene-label {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: auto;
+  font: inherit;
+  font-size: 0.8em;
+  font-weight: 700;
+  min-height: var(--control);
+  padding: 0.2em 0.8em;
+  border-radius: 999px;
+  border: 3px solid #fff;
+  background: rgba(8, 42, 55, 0.88);
+  color: #fff;
+  white-space: nowrap;
+  cursor: pointer;
+  will-change: transform;
+}
+.scene-label[hidden] { display: none; }
+.scene-label.is-selected { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* Inside The Codex: the course header carries the product name, so ours steps aside. */
+[data-embed='codex'] .brand { visibility: hidden; width: 0; overflow: hidden; }
+
 /* ── Top bar ────────────────────────────────────────────────────────────── */
 .topbar {
   position: absolute;
