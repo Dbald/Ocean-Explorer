@@ -32,7 +32,12 @@ export type FromCodex =
   | { type: 'start'; mode: Mode; resume?: boolean }
   | { type: 'set_labels'; on: boolean }
   | { type: 'go_to_step'; step: StepId }
-  | { type: 'pause_narration' };
+  | { type: 'pause_narration' }
+  | { type: 'open_panel'; panel: Panel };
+
+/** Ocean Explorer's own panels, which The Codex's header buttons can open. */
+export type Panel = 'guide' | 'transcript' | 'settings';
+const PANELS: Panel[] = ['guide', 'transcript', 'settings'];
 
 export const OE_SOURCE = 'ocean-explorer';
 export const CODEX_SOURCE = 'the-codex';
@@ -77,6 +82,8 @@ export function parseCommand(data: unknown): FromCodex | null {
       return lessonSteps.some((s) => s.id === d.step) ? { type: 'go_to_step', step: d.step as StepId } : null;
     case 'pause_narration':
       return { type: 'pause_narration' };
+    case 'open_panel':
+      return PANELS.includes(d.panel as Panel) ? { type: 'open_panel', panel: d.panel as Panel } : null;
     default:
       return null;
   }

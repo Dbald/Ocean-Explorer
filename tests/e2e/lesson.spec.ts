@@ -384,3 +384,16 @@ test('home: the reef shows beside the lessons, the panel hides, and tapping an a
   await expect(page.locator('.step-indicator')).toHaveText('Explore mode');
   await expect(page.locator('#card h2')).toHaveText('Blue tang');
 });
+
+test('inside The Codex there is one header: ours steps aside and its tools sit over the reef', async ({ page }) => {
+  // The Codex shows the lesson in a frame, with ?embed=codex.
+  await page.setContent(`<iframe src="http://localhost:4173/?embed=codex&presentation=static" style="width:1300px;height:800px;border:0"></iframe>`);
+  const app = page.frameLocator('iframe');
+  await expect(app.locator('html[data-embed="codex"]')).toHaveCount(1);
+  await expect(app.locator('.topbar')).toBeHidden();
+  await expect(app.locator('#stage-hud').getByRole('button', { name: 'Settings' })).toBeVisible();
+  await expect(app.locator('#stage-hud').getByRole('button', { name: 'Teacher guide' })).toBeVisible();
+  await app.getByRole('button', { name: 'Start lesson' }).click();
+  await expect(app.locator('.step-eyebrow')).toHaveText('Step 1 · Briefing');
+  await expect(app.getByRole('button', { name: 'Save & exit' })).toHaveCount(0);
+});

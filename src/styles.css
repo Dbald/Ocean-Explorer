@@ -142,8 +142,10 @@ kbd { font-family: inherit; background: var(--panel-3); border: 1px solid var(--
 .scene-label { top: 0; left: 0; pointer-events: auto; min-width: 0; will-change: transform; }
 .scene-label[hidden] { display: none; }
 
-/* Inside The Codex: the course header carries the product name, so ours steps aside. */
-[data-embed='codex'] .brand { visibility: hidden; width: 0; overflow: hidden; }
+/* Inside The Codex: its header carries the course, progress and Save & exit, so ours is not shown
+   (the guide, transcript and settings move over the reef, beside fullscreen). */
+[data-embed='codex'] { --topbar-h: 0px; }
+[data-embed='codex'] .topbar { display: none; }
 
 /* ── Top bar (The Codex) ─────────────────────────────────────────────── */
 .topbar {
@@ -186,6 +188,7 @@ kbd { font-family: inherit; background: var(--panel-3); border: 1px solid var(--
 }
 .stage-hud .btn { pointer-events: auto; background: rgba(10, 37, 49, 0.75); }
 .hud-chips { display: flex; flex-wrap: wrap; gap: 0.5em; }
+.hud-tools { display: flex; gap: 0.5em; flex: none; }
 .live-chip, .prompt-chip { display: inline-flex; align-items: center; gap: 0.5em; border-radius: 999px; padding: 0.35em 0.9em; font-size: 0.72em; font-weight: 800; }
 .live-chip { background: var(--teal); color: var(--teal-ink); text-transform: uppercase; letter-spacing: 0.06em; }
 .live-dot { width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--teal-ink); }

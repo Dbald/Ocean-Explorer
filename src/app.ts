@@ -133,6 +133,9 @@ export class App {
       case 'pause_narration':
         if (!this.paused) this.togglePause();
         return;
+      case 'open_panel':
+        if (cmd.panel === 'guide') return this.openGuide();
+        return this.openDialog(cmd.panel);
     }
   }
 
@@ -570,13 +573,25 @@ export class App {
   private renderHud() {
     const prompt = this.stagePrompt();
     const full = !!document.fullscreenElement;
+    // Inside The Codex its header already shows the course, the progress and Save & exit, so ours is
+    // hidden; the guide, transcript and settings move here, beside fullscreen.
+    const tools = this.bridge
+      ? [
+          btn('Teacher guide', 'guide', { cls: 'icon-btn round hud-btn', icon: ICON.guide, aria: 'Teacher guide' }),
+          btn('Transcript', 'transcript', { cls: 'icon-btn round hud-btn', icon: ICON.transcript, aria: 'Transcript' }),
+          btn('Settings', 'settings', { cls: 'icon-btn round hud-btn', icon: ICON.settings, aria: 'Settings' }),
+        ].join('')
+      : '';
     this.patch(
       $('stage-hud'),
       `<div class="hud-chips">
         <span class="live-chip"><span class="live-dot" aria-hidden="true"></span>Live · ${esc(PRODUCT_NAME)}</span>
         ${prompt ? `<span class="prompt-chip">${esc(prompt)}</span>` : ''}
       </div>
-      ${document.fullscreenEnabled ? btn(full ? 'Exit fullscreen' : 'Fullscreen', 'fullscreen', { cls: 'icon-btn round hud-btn', icon: full ? ICON.exitFullscreen : ICON.fullscreen, aria: full ? 'Exit fullscreen' : 'Fullscreen' }) : ''}`,
+      <div class="hud-tools">
+        ${tools}
+        ${document.fullscreenEnabled ? btn(full ? 'Exit fullscreen' : 'Fullscreen', 'fullscreen', { cls: 'icon-btn round hud-btn', icon: full ? ICON.exitFullscreen : ICON.fullscreen, aria: full ? 'Exit fullscreen' : 'Fullscreen' }) : ''}
+      </div>`,
     );
   }
 

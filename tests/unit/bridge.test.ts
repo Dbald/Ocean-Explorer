@@ -29,6 +29,8 @@ describe('Codex bridge: commands', () => {
     expect(parseCommand({ source: 'the-codex', type: 'set_labels', on: false })).toEqual({ type: 'set_labels', on: false });
     expect(parseCommand({ source: 'the-codex', type: 'start', mode: 'lesson', resume: true })).toEqual({ type: 'start', mode: 'lesson', resume: true });
     expect(parseCommand({ source: 'the-codex', type: 'go_to_step', step: 'recap' })).toEqual({ type: 'go_to_step', step: 'recap' });
+    expect(parseCommand({ source: 'the-codex', type: 'open_panel', panel: 'settings' })).toEqual({ type: 'open_panel', panel: 'settings' });
+    expect(parseCommand({ source: 'the-codex', type: 'open_panel', panel: 'cookies' })).toBeNull();
   });
 
   it('ignores anything malformed or from another source', () => {

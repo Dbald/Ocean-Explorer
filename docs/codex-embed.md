@@ -15,6 +15,8 @@ https://oceanexp.netlify.app/?embed=codex&start=lesson
 
 The Codex frame should allow fullscreen: `<iframe allow="fullscreen; autoplay; xr-spatial-tracking" …>`.
 
+Inside The Codex, Ocean Explorer hides its own header (The Codex already shows the course, the progress and Save & exit). Its Teacher guide, Transcript and Settings buttons move over the reef, next to the fullscreen button. The fullscreen button only appears when the frame allows fullscreen. The Codex can also open those panels from its own header with `open_panel`.
+
 ## Trusted origins
 
 Messages are accepted from, and sent to, only:
@@ -49,5 +51,6 @@ Every message needs `source: 'the-codex'`. Anything else is ignored.
 | `set_labels` | `on` | `true`: every creature's name shows; `false` (the default): a name shows only on hover or for the selected creature |
 | `go_to_step` | `step` | jump to a lesson step |
 | `pause_narration` | | pause narration and ambience |
+| `open_panel` | `panel`: `guide`, `transcript` or `settings` | open Ocean Explorer's teacher guide, transcript or settings |
 
 The protocol lives in `src/embed/bridge.ts`. Power a City can copy that file and keep the same message names.
