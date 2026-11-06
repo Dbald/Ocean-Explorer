@@ -565,6 +565,9 @@ export class ReefScene {
       el.className = 'scene-label';
       el.dataset.labelId = id;
       el.textContent = title;
+      // The creature list is the keyboard and screen-reader route; tags are a tap shortcut on the reef itself.
+      el.setAttribute('aria-label', `${title}, in the reef`);
+      el.tabIndex = -1;
       el.hidden = true;
       this.labelLayer.appendChild(el);
       this.labelItems.push({ id, el, obj, offset });
