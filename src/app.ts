@@ -19,7 +19,7 @@ import { MapView } from './scene/MapView.ts';
 import { ReefScene, webglAvailable, type Viewpoint } from './scene/ReefScene.ts';
 import { StaticScene } from './scene/StaticScene.ts';
 import { renderGuide, renderTranscript, SHORTCUTS } from './ui/guide.ts';
-import { btn, esc } from './ui/html.ts';
+import { btn, esc, ICON } from './ui/html.ts';
 import { changingStep, mapStateFor, remainingLitter, renderChangingDock } from './ui/changingViews.ts';
 import { findOrder, renderCard, renderExploreDock, renderFindDock, renderLessonDock } from './ui/views.ts';
 import { CodexBridge, LESSON_ID, eventsFor, isEmbedded, type FromCodex } from './embed/bridge.ts';
@@ -111,7 +111,7 @@ export class App {
     if (location.hash === '#guide') this.openGuide();
     if (location.hash === '#record') void this.openRecorder();
     if (this.bridge) {
-      this.bridge.send({ type: 'ready', lesson: LESSON_ID, labels: this.prefs.labels });
+      this.bridge.send({ type: 'ready', lesson: LESSON_ID, labels: this.prefs.labelsAlways });
       // The Codex can open straight into an activity: ?embed=codex&start=lesson
       const start = new URLSearchParams(location.search).get('start');
       if (start === 'lesson') this.onCodexCommand({ type: 'start', mode: 'lesson', resume: true });
@@ -138,8 +138,8 @@ export class App {
 
   /** Name labels on the creatures: a preference, also switchable from The Codex. */
   private setLabels(on: boolean, announce: boolean) {
-    if (this.prefs.labels === on) return;
-    this.prefs.labels = on;
+    if (this.prefs.labelsAlways === on) return;
+    this.prefs.labelsAlways = on;
     savePreferences(this.prefs);
     this.syncScene();
     this.refreshSettings();
@@ -148,7 +148,7 @@ export class App {
 
   /** Labels show everywhere except the "Can you find…?" game, where they would give the answers away. */
   private labelsVisible() {
-    return this.prefs.labels && this.state.mode !== 'find';
+    return this.state.mode !== 'find';
   }
 
   private titleOf = (id: string) => findableById.get(id)?.title ?? organismById.get(id)?.title ?? id;
@@ -456,12 +456,18 @@ export class App {
     this.scene3d?.setSargassum(sargassum);
     this.scene3d?.setLitter(litter);
     // Name tags float over the creatures at the current stop, like the illustrations' labels.
-    this.scene3d?.setLabels(this.labelsVisible() && !t.shelter && !litter ? findablesAt(t.stop).map((f) => ({ id: f.id, title: f.title })) : null);
+    // Shown on hover (or for the selected animal) unless "Always show name labels" is on.
+    this.scene3d?.setLabels(
+      this.labelsVisible() && !t.shelter && !litter ? findablesAt(t.stop).map((f) => ({ id: f.id, title: f.title, done: this.state.discovered.includes(f.id) })) : null,
+      this.prefs.labelsAlways,
+    );
     this.staticScene?.render({
       stop: t.stop,
       selected: this.state.selectedOrganism,
       shelterView: t.shelter,
       labels: this.labelsVisible(),
+      labelsAlways: this.prefs.labelsAlways,
+      discovered: this.state.discovered,
       hint: this.staticHint,
       sargassum,
       litter,
@@ -503,29 +509,75 @@ export class App {
     const s = this.state;
     const parts: string[] = [];
     const sub = document.querySelector('.brand-sub');
-    if (sub) sub.textContent = s.mode === null ? 'Belize' : s.mode === 'changing' ? `Belize: ${CHANGING_TITLE}` : LESSON_TITLE;
+    if (sub) sub.textContent = s.mode === null ? PRODUCT_NAME : s.mode === 'changing' ? `Belize: ${CHANGING_TITLE}` : LESSON_TITLE;
+    // Progress through a guided lesson: a bar and "1 of 6". The full step name is there for screen readers.
+    const progress = (i: number, n: number, label: string) =>
+      `<div class="progress"><span class="progress-track" aria-hidden="true"><span style="width:${Math.round(((i + 1) / n) * 100)}%"></span></span><span class="progress-count" aria-hidden="true">${i + 1} of ${n}</span><span class="step-indicator sr-only">${esc(label)}</span></div>`;
     if (s.mode === 'lesson') {
       const i = steps.findIndex((x) => x.id === s.step);
-      parts.push(`<span class="step-indicator">Step ${i + 1} of ${steps.length}: ${esc(steps[i].label)}</span>`);
-      parts.push(btn('Return to lesson', 'return', { cls: 'top-btn', icon: '↩' }));
+      parts.push(progress(i, steps.length, `Step ${i + 1} of ${steps.length}: ${steps[i].label}`));
     } else if (s.mode === 'explore') {
-      parts.push('<span class="step-indicator">Explore mode</span>');
+      parts.push('<span class="mode-pill step-indicator">Explore mode</span>');
     } else if (s.mode === 'find') {
-      parts.push('<span class="step-indicator">Can you find…?</span>');
+      parts.push('<span class="mode-pill step-indicator">Can you find…?</span>');
     } else if (s.mode === 'changing') {
-      const steps = stepsFor(s.changing.level);
-      const i = Math.min(s.changing.step, steps.length - 1);
-      parts.push(`<span class="step-indicator">${s.changing.level === 'little' ? 'Little Explorers' : 'Expedition 2'} · Step ${i + 1} of ${steps.length}: ${esc(steps[i].label)}</span>`);
+      const list = stepsFor(s.changing.level);
+      const i = Math.min(s.changing.step, list.length - 1);
+      parts.push(progress(i, list.length, `${s.changing.level === 'little' ? 'Little Explorers' : 'Expedition 2'} · Step ${i + 1} of ${list.length}: ${list[i].label}`));
     }
-    // Inside The Codex, the course page is "home": its header handles leaving the lesson.
-    if (s.mode !== null && !this.bridge) parts.push(btn('Home', 'home', { cls: 'top-btn', icon: '⌂' }));
-    parts.push(btn('Teacher guide', 'guide', { cls: 'top-btn', icon: '📘' }));
-    parts.push(btn('Transcript', 'transcript', { cls: 'top-btn', icon: '☰' }));
-    parts.push(btn('Settings', 'settings', { cls: 'top-btn', icon: '⚙' }));
-    if (document.fullscreenEnabled) {
-      parts.push(btn(document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen', 'fullscreen', { cls: 'top-btn', icon: '⛶' }));
-    }
+    parts.push(btn('Teacher guide', 'guide', { cls: 'icon-btn round', icon: ICON.guide, aria: 'Teacher guide' }));
+    parts.push(btn('Transcript', 'transcript', { cls: 'icon-btn round', icon: ICON.transcript, aria: 'Transcript' }));
+    parts.push(btn('Settings', 'settings', { cls: 'icon-btn round', icon: ICON.settings, aria: 'Settings' }));
+    // Inside The Codex, the course page handles leaving the lesson.
+    if (s.mode !== null && !this.bridge) parts.push(btn('Save & exit', 'home', { cls: 'save-exit', key: 'save-exit' }));
     this.patch($('top-actions'), parts.join(''));
+    this.renderHud();
+  }
+
+  /** A short prompt over the reef for what the class is doing now. */
+  private stagePrompt(): string {
+    const s = this.state;
+    if (s.mode === null) return 'Tap any animal to meet it';
+    if (s.mode === 'explore') return 'Tap an animal to meet it';
+    if (s.mode === 'find') return '';
+    if (s.mode === 'changing') {
+      const kind = changingStep(s).kind;
+      const byKind: Record<string, string> = {
+        briefing: 'What’s changing here?',
+        belt: 'Follow the sargassum',
+        causes: 'What feeds the sargassum?',
+        reef: 'Compare, then clean up',
+        cleanup: 'Find the trash',
+        seaweed: 'Is it lighter or darker?',
+        help: 'How can we help?',
+        explain: 'Show what you know',
+        recap: 'What did we find?',
+      };
+      return byKind[kind] ?? '';
+    }
+    const byStep: Record<StepId, string> = {
+      briefing: 'Look around: what lives here?',
+      explore: 'Tap an animal to meet it',
+      connect: 'Who eats what?',
+      investigate: 'Where could a small fish hide?',
+      explain: 'Show what you know',
+      recap: 'What did we find?',
+    };
+    return byStep[s.step];
+  }
+
+  /** Chips over the top of the reef, and the fullscreen button in its corner. */
+  private renderHud() {
+    const prompt = this.stagePrompt();
+    const full = !!document.fullscreenElement;
+    this.patch(
+      $('stage-hud'),
+      `<div class="hud-chips">
+        <span class="live-chip"><span class="live-dot" aria-hidden="true"></span>Live · ${esc(PRODUCT_NAME)}</span>
+        ${prompt ? `<span class="prompt-chip">${esc(prompt)}</span>` : ''}
+      </div>
+      ${document.fullscreenEnabled ? btn(full ? 'Exit fullscreen' : 'Fullscreen', 'fullscreen', { cls: 'icon-btn round hud-btn', icon: full ? ICON.exitFullscreen : ICON.fullscreen, aria: full ? 'Exit fullscreen' : 'Fullscreen' }) : ''}`,
+    );
   }
 
   private renderEntry() {
@@ -581,7 +633,6 @@ export class App {
           ${btn('Hide lessons', 'home-toggle', { cls: 'ghost icon-btn home-hide', key: 'home-toggle', icon: '✕', aria: 'Hide lessons and show the whole reef' })}
         </div>
         <div class="home-scroll">
-          <p class="tap-hint"><span aria-hidden="true">👆</span> Tap any animal on the reef to meet it.</p>
           ${r ? `<div class="row entry-actions">${btn(resumeLabel, 'resume', { cls: 'primary big', key: 'entry-resume', icon: '↩' })}</div>` : ''}
 
           <section class="phase is-live" aria-labelledby="phase-live-title">
@@ -752,7 +803,7 @@ export class App {
       ${choice('3D quality', 'quality', [['high', 'High'], ['low', 'Low']])}
       ${toggle('Ambient motion', 'ambientMotion', 'Swaying seagrass, swimming fish, light')}
       ${toggle('Instant camera moves', 'instantCamera')}
-      ${toggle('Creature name labels', 'labels', 'Hidden during “Can you find…?”')}
+      ${toggle('Always show name labels', 'labelsAlways', 'Off: a name shows when you point at an animal')}
       ${toggle('Captions', 'captions')}
       ${toggle('Read aloud automatically', 'autoNarrate')}
       ${slider('Voice volume', 'voiceVolume')}
@@ -1132,7 +1183,7 @@ export class App {
         this.applyPrefs();
         return this.refreshSettings();
       case 'pref-toggle': {
-        if (a === 'labels') return this.setLabels(!this.prefs.labels, true);
+        if (a === 'labelsAlways') return this.setLabels(!this.prefs.labelsAlways, true);
         const key = a as 'ambientMotion' | 'instantCamera' | 'captions' | 'autoNarrate' | 'showPerformance';
         this.prefs[key] = !this.prefs[key];
         this.applyPrefs();

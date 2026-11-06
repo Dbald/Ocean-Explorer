@@ -16,8 +16,11 @@ export interface Preferences {
   ambientMotion: boolean;
   instantCamera: boolean;
   captions: boolean;
-  /** Name tags on the creatures (3D and illustrations). */
-  labels: boolean;
+  /**
+   * Name tags on every creature at once. Off by default: a creature's name
+   * shows when the pointer is over it, or when it is selected.
+   */
+  labelsAlways: boolean;
   autoNarrate: boolean;
   voiceVolume: number;
   ambienceVolume: number;
@@ -32,7 +35,7 @@ export function defaultPreferences(reducedMotion: boolean): Preferences {
     ambientMotion: !reducedMotion,
     instantCamera: reducedMotion,
     captions: true,
-    labels: true,
+    labelsAlways: false,
     autoNarrate: true,
     voiceVolume: 0.9,
     ambienceVolume: 0.35,

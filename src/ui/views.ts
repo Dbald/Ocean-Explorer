@@ -6,9 +6,9 @@ import { findableById, findables, findablesAt } from '../content/findables.ts';
 import { foodRelationshipById, foodRelationships, foodResourceById, shelterRelationships } from '../content/food.ts';
 import { habitatById, habitats } from '../content/habitats.ts';
 import {
+  BRIEFING_INTRO,
   COMPOSITE_NOTICE,
   GUIDING_QUESTION,
-  OBJECTIVE,
   connectExample,
   connectItems,
   exitQuestions,
@@ -21,7 +21,7 @@ import { isVerified, organismById, organisms } from '../content/organisms.ts';
 import { sourceById } from '../content/sources.ts';
 import type { FoodChoiceItem, HabitatId, VideoSegment } from '../content/types.ts';
 import { activitySummary, choice, currentFindTarget, FEATURED_COUNT, featuredDiscovered, predictionLabel, SHELTER_EXIT_ID, stepIndex, type LessonState } from '../lesson/controller.ts';
-import { btn, esc, foodArrow, refPhoto, shelterLink } from './html.ts';
+import { btn, esc, foodArrow, ICON, refPhoto, shelterLink } from './html.ts';
 
 export function nameOf(id: string): string {
   return organismById.get(id)?.commonName ?? foodResourceById.get(id)?.name ?? id;
@@ -136,12 +136,11 @@ export function tabs(action: string, labels: string[], current: number, statuses
 
 function briefingBody(state: LessonState, ctx: ViewContext) {
   const s = stepById.get('briefing')!;
-  return `<p class="question">${esc(GUIDING_QUESTION)}</p>
-    <p>${esc(OBJECTIVE)}</p>
+  return `<p>${esc(BRIEFING_INTRO)}</p>
     <ul class="prompts">${s.prompts.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
     <label class="field">
-      <span>Class’s first idea <span class="muted">(optional — no names)</span></span>
-      <textarea data-input="baseline" data-key="baseline" rows="2" maxlength="280">${esc(state.baselineNote)}</textarea>
+      <span><strong>Class’s first idea</strong> <span class="muted">(optional, no names)</span></span>
+      <textarea data-input="baseline" data-key="baseline" rows="2" maxlength="280" placeholder="A reef is a home because…">${esc(state.baselineNote)}</textarea>
     </label>
     <div class="row">
       ${btn(state.baselineShared ? 'Ideas shared ✓' : 'We shared our ideas', 'baseline-shared', { cls: state.baselineShared ? 'secondary is-done' : 'secondary', pressed: state.baselineShared })}
@@ -292,6 +291,36 @@ function recapBody(state: LessonState, ctx: ViewContext) {
 
 // ── Dock ─────────────────────────────────────────────────────────────────────
 
+/**
+ * The step tracker: a row of circles joined by a line, each with its name
+ * underneath. The number is there for screen readers ("2. Explore").
+ */
+export function stepper(labels: string[], current: number, action: string, args: string[], aria = 'Lesson steps') {
+  return `<ol class="stepper" aria-label="${esc(aria)}">
+    ${labels
+      .map((l, k) => {
+        const cls = `step-btn${k === current ? ' is-current' : k < current ? ' is-past' : ''}`;
+        return `<li><button type="button" class="${cls}" data-action="${esc(action)}" data-arg="${esc(args[k])}" data-key="${esc(`${action}:${args[k]}`)}"${k === current ? ' aria-current="step"' : ''}>
+          <span class="step-dot" aria-hidden="true">${k < current ? '✓' : ''}</span><span class="step-name"><span class="sr-only">${k + 1}. </span>${esc(l)}</span>
+        </button></li>`;
+      })
+      .join('')}
+  </ol>`;
+}
+
+/** The bottom of a guided step: narration controls, Back, and a wide Next. */
+export function stepNav(opts: { paused: boolean; canBack: boolean; next: string | null; backAction: string; nextAction: string }) {
+  return `<div class="lesson-nav">
+      <div class="nav-row">
+        ${btn(opts.paused ? 'Resume' : 'Pause', 'pause', { cls: 'icon-btn round', pressed: opts.paused, icon: opts.paused ? ICON.play : ICON.pause, aria: opts.paused ? 'Resume' : 'Pause' })}
+        ${btn('Replay', 'replay', { cls: 'icon-btn round', icon: ICON.replay, aria: 'Replay narration' })}
+        <span class="nav-label">Narration</span>
+        ${btn('Back', opts.backAction, { cls: 'ghost back-btn', disabled: !opts.canBack, icon: '←' })}
+      </div>
+      ${opts.next ? btn(`Next: ${opts.next}`, opts.nextAction, { cls: 'primary next-btn', icon: '→' }) : ''}
+    </div>`;
+}
+
 export function renderLessonDock(state: LessonState, ctx: ViewContext, paused: boolean) {
   const step = stepById.get(state.step)!;
   const i = stepIndex(state.step);
@@ -321,29 +350,33 @@ export function renderLessonDock(state: LessonState, ctx: ViewContext, paused: b
       <ul>${step.teacherNotes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
       <p class="small"><strong>Prompts:</strong> ${step.prompts.map(esc).join(' · ')}</p>
     </details>`;
-  return `<ol class="stepper" aria-label="Lesson steps">
-      ${steps
-        .map((s, k) => `<li>${btn(`${k + 1}. ${s.label}`, 'goto', { arg: s.id, cls: `step-btn${k === i ? ' is-current' : k < i ? ' is-past' : ''}`, current: k === i })}</li>`)
-        .join('')}
-    </ol>
+  // The briefing's title is the big question itself.
+  const title = state.step === 'briefing' ? GUIDING_QUESTION : step.instruction;
+  return `${stepper(
+      steps.map((s) => s.label),
+      i,
+      'goto',
+      steps.map((s) => s.id),
+    )}
     <div class="dock-body">
-      <h2 class="instruction" tabindex="-1" data-key="instruction">${esc(step.instruction)}</h2>
-      ${paused ? '<p class="paused-banner" role="status">Paused — narration and motion are stopped. Discussion time is never cut off.</p>' : ''}
-      ${body}
+      <section class="step-card">
+        <p class="step-eyebrow">Step ${i + 1} · ${esc(step.label)}</p>
+        <h2 class="instruction" tabindex="-1" data-key="instruction">${esc(title)}</h2>
+        ${paused ? '<p class="paused-banner" role="status">Paused — narration and motion are stopped. Discussion time is never cut off.</p>' : ''}
+        ${body}
+      </section>
       ${notes}
     </div>
-    <div class="lesson-nav">
-      ${btn('Back', 'back', { cls: 'secondary', disabled: i === 0, icon: '←' })}
-      ${btn(paused ? 'Resume' : 'Pause', 'pause', { cls: 'secondary', pressed: paused, icon: paused ? '▶' : '❚❚' })}
-      ${btn('Replay', 'replay', { cls: 'secondary', icon: '↻', aria: 'Replay narration' })}
-      ${i < steps.length - 1 ? btn(`Next: ${steps[i + 1].label}`, 'next', { cls: 'primary', icon: '→' }) : ''}
-    </div>`;
+    ${stepNav({ paused, canBack: i > 0, next: i < steps.length - 1 ? steps[i + 1].label : null, backAction: 'back', nextAction: 'next' })}`;
 }
 
 export function renderExploreDock(state: LessonState) {
   return `<div class="dock-body">
-      <h2 class="instruction" tabindex="-1" data-key="instruction">Explore at your own pace</h2>
-      ${exploreBody(state)}
+      <section class="step-card">
+        <p class="step-eyebrow">Explore</p>
+        <h2 class="instruction" tabindex="-1" data-key="instruction">Explore at your own pace</h2>
+        ${exploreBody(state)}
+      </section>
     </div>
     <div class="lesson-nav">
       ${btn('Can you find…?', 'find', { cls: 'secondary', icon: '🔍' })}

@@ -13,6 +13,8 @@ export const PRODUCT_NAME = 'Ocean Explorer';
 export const GUIDING_QUESTION = 'What makes this reef a home?';
 export const OBJECTIVE =
   'Students explain how a reef and the habitats next to it give organisms the food and shelter they need.';
+/** The objective, said to the class. */
+export const BRIEFING_INTRO = 'Today you’ll explain how a reef, and the habitats next to it, give animals food and shelter.';
 export const COMPOSITE_NOTICE =
   'This is an educational scene inspired by Belize’s reef, seagrass and sand habitats. It is not a map or live view of a real reef.';
 

@@ -89,6 +89,8 @@ export class ReefScene {
   /** Name tags over the creatures: DOM buttons positioned from the 3D scene each frame. */
   private labelLayer: HTMLDivElement | null = null;
   private labelItems: { id: string; el: HTMLButtonElement; obj: THREE.Object3D; offset: THREE.Vector3 }[] = [];
+  /** All tags at once, or only the creature under the pointer and the selected one. */
+  private labelsAlways = false;
   private labelKey = '';
   private labelVec = new THREE.Vector3();
   private ring!: THREE.Mesh;
@@ -536,10 +538,11 @@ export class ReefScene {
    * Shows tappable name tags for these creatures (null hides them). Each tag
    * sits just above its animal and follows it as it moves or the camera turns.
    */
-  setLabels(list: { id: string; title: string }[] | null) {
-    const key = list ? list.map((l) => l.id).join(',') : '';
+  setLabels(list: { id: string; title: string; done?: boolean }[] | null, always = false) {
+    const key = list ? `${always}|${list.map((l) => `${l.id}${l.done ? '+' : ''}`).join(',')}` : '';
     if (key === this.labelKey) return;
     this.labelKey = key;
+    this.labelsAlways = always;
     if (!this.labelLayer) {
       const layer = document.createElement('div');
       layer.className = 'scene-labels';
@@ -552,7 +555,7 @@ export class ReefScene {
     }
     this.labelLayer.replaceChildren();
     this.labelItems = [];
-    for (const { id, title } of list ?? []) {
+    for (const { id, title, done } of list ?? []) {
       const obj = id === 'elkhorn-coral' && this.focusColony ? this.focusColony.group : this.organisms.get(id);
       if (!obj) continue;
       // Anchor: the top centre of the model, kept as an offset from its origin so moving animals carry their tag.
@@ -562,9 +565,11 @@ export class ReefScene {
       const offset = top.sub(obj.getWorldPosition(new THREE.Vector3()));
       const el = document.createElement('button');
       el.type = 'button';
-      el.className = 'scene-label';
+      el.className = `scene-label${done ? ' is-done' : ''}`;
       el.dataset.labelId = id;
-      el.textContent = title;
+      // A dot on the animal, and its name in a pill beside it (✓ once the class has met it).
+      el.innerHTML = `<span class="scene-label-dot" aria-hidden="true"></span><span class="scene-label-text"></span>`;
+      el.querySelector('.scene-label-text')!.textContent = done ? `${title} ✓` : title;
       // The creature list is the keyboard and screen-reader route; tags are a tap shortcut on the reef itself.
       el.setAttribute('aria-label', `${title}, in the reef`);
       el.tabIndex = -1;
@@ -586,10 +591,11 @@ export class ReefScene {
       item.obj.getWorldPosition(v).add(item.offset);
       const near = v.distanceTo(this.camera.position) < 18;
       v.project(this.camera);
-      const show = !closeup && near && v.z < 1 && Math.abs(v.x) < 1.02 && Math.abs(v.y) < 1.02;
+      const wanted = this.labelsAlways || item.id === this.hoverId || item.id === this.selectedId;
+      const show = wanted && !closeup && near && v.z < 1 && Math.abs(v.x) < 1.02 && Math.abs(v.y) < 1.02;
       if (item.el.hidden === show) item.el.hidden = !show;
       if (!show) continue;
-      item.el.style.transform = `translate(${((v.x + 1) / 2) * w}px, ${((1 - v.y) / 2) * h}px) translate(-50%, -100%)`;
+      item.el.style.transform = `translate(${((v.x + 1) / 2) * w}px, ${((1 - v.y) / 2) * h}px) translate(-0.75em, -50%)`;
       item.el.classList.toggle('is-selected', item.id === this.selectedId);
     }
   }

@@ -32,12 +32,12 @@ Every message has `source: 'ocean-explorer'` and `version: 1`.
 
 | type | fields | when |
 |---|---|---|
-| `ready` | `lesson`, `labels` | the app has started |
+| `ready` | `lesson`, `labels` | the app has started (`labels`: whether every name label is showing) |
 | `step_changed` | `mode`, `step`, `index`, `total`, `label` | a stepped activity starts or moves |
 | `lesson_completed` | `mode` | the last step is reached |
 | `organism_selected` | `id`, `title` | a creature is tapped |
 | `prediction_recorded` | `choice` | the class records its shelter prediction |
-| `labels_changed` | `on` | name labels are switched in Settings |
+| `labels_changed` | `on` | "Always show name labels" is switched in Settings |
 
 ## The Codex → Ocean Explorer
 
@@ -46,7 +46,7 @@ Every message needs `source: 'the-codex'`. Anything else is ignored.
 | type | fields | effect |
 |---|---|---|
 | `start` | `mode`, `resume?` | start (or resume) an activity |
-| `set_labels` | `on` | show or hide creature name labels |
+| `set_labels` | `on` | `true`: every creature's name shows; `false` (the default): a name shows only on hover or for the selected creature |
 | `go_to_step` | `step` | jump to a lesson step |
 | `pause_narration` | | pause narration and ambience |
 

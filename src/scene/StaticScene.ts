@@ -337,6 +337,10 @@ export interface StaticSceneState {
   labels: boolean;
   /** An animal to point out (game hint). */
   hint: string | null;
+  /** Every name showing at once; otherwise a name shows on hover, focus or selection. */
+  labelsAlways?: boolean;
+  /** Animals the class has met (their dot turns teal, with a ✓). */
+  discovered?: string[];
   /** Expedition 2: thick sargassum overhead. */
   sargassum?: boolean;
   /** Expedition 2: trash still in the water (null = none shown). While trash is shown, the animals' buttons step aside. */
@@ -357,7 +361,7 @@ export class StaticScene {
   }
 
   render(s: StaticSceneState) {
-    const key = `${s.stop}|${s.selected}|${s.shelterView}|${s.labels}|${s.hint}|${s.sargassum}|${s.litter?.join(',') ?? '-'}`;
+    const key = `${s.stop}|${s.selected}|${s.shelterView}|${s.labels}|${s.labelsAlways}|${s.discovered?.join(',')}|${s.hint}|${s.sargassum}|${s.litter?.join(',') ?? '-'}`;
     if (key === this.lastKey) return;
     this.lastKey = key;
     const focused = (document.activeElement as HTMLElement | null)?.dataset?.organism;
@@ -375,8 +379,11 @@ export class StaticScene {
       ${s.shelterView || zoomed || s.litter ? '' : here
         .map((o) => {
           const p = HOTSPOTS[o.id];
-          const cls = `hotspot${s.labels ? '' : ' is-blank'}${o.id === s.selected ? ' is-selected' : ''}${o.id === s.hint ? ' is-hint' : ''}`;
-          return `<button class="${cls}" style="left:${p.x}%;top:${p.y}%" data-organism="${o.id}" aria-label="${o.title}" aria-pressed="${o.id === s.selected}">${s.labels ? o.title : ''}</button>`;
+          const done = !!s.discovered?.includes(o.id);
+          const cls = `hotspot${s.labels ? '' : ' is-blank'}${s.labels && s.labelsAlways ? ' is-labelled' : ''}${done ? ' is-done' : ''}${o.id === s.selected ? ' is-selected' : ''}${o.id === s.hint ? ' is-hint' : ''}`;
+          // A dot on the animal; its name appears beside it on hover, focus or selection.
+          const name = s.labels ? `<span class="hotspot-label">${o.title}${done ? ' ✓' : ''}</span>` : '';
+          return `<button class="${cls}" style="left:${p.x}%;top:${p.y}%" data-organism="${o.id}" aria-label="${o.title}" aria-pressed="${o.id === s.selected}"><span class="hotspot-dot" aria-hidden="true"></span>${name}</button>`;
         })
         .join('')}
       ${zoomed ? '' : (s.litter ?? [])

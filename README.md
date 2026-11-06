@@ -139,6 +139,10 @@ What’s harming Belize’s reef, told the way the research tells it. Both level
 
 Content lives in `src/content/changing.ts`, with every claim sourced and marked draft until reviewed. The map is drawn in code (`src/scene/MapView.ts`), and the 3D mats and trash are in `src/scene/changing3d.ts`.
 
+## Look and labels
+
+The interface follows The Codex design: a course header with progress, a *Live · Ocean Explorer* chip and a short prompt over the reef, and a side panel with a step tracker, a step card and a wide **Next** button. Creatures show a dot and their name only when the pointer is over them (or when selected), so the reef stays uncluttered on a classroom board. **Settings → Always show name labels** brings every name back.
+
 ## Real reference photos
 
 The scene is illustrated, so animal cards, the *Can you find…?* "You found it!" screen and Expedition 2 have a slot for a **real photo**: the actual animal, or real sargassum floating and piled on a beach. Photos sit in the side panel, labelled *Real photo* with their credit and licence, and never cover the reef. Subjects without a photo show none. See [docs/photos.md](docs/photos.md) for the 22 photos wanted, which licences are safe, and how to add one.

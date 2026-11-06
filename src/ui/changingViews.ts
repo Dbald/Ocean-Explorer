@@ -25,7 +25,7 @@ import { habitatById } from '../content/habitats.ts';
 import { changingSummary, choice, type LessonState } from '../lesson/controller.ts';
 import type { MapState } from '../scene/MapView.ts';
 import { btn, esc, refPhoto } from './html.ts';
-import { choiceItem, stopNav, tabs } from './views.ts';
+import { choiceItem, stepNav, stepper, stopNav, tabs } from './views.ts';
 
 export const changingStep = (state: LessonState): ChangingStep => {
   const steps = stepsFor(state.changing.level);
@@ -315,19 +315,21 @@ export function renderChangingDock(state: LessonState, paused: boolean) {
       <ul>${step.teacherNotes.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
       ${step.prompts.length ? `<p class="small"><strong>Prompts:</strong> ${step.prompts.map(esc).join(' · ')}</p>` : ''}
     </details>`;
-  return `<ol class="stepper" aria-label="Expedition steps">
-      ${steps.map((s, k) => `<li>${btn(`${k + 1}. ${s.label}`, 'ch-goto', { arg: String(k), cls: `step-btn${k === i ? ' is-current' : k < i ? ' is-past' : ''}`, current: k === i })}</li>`).join('')}
-    </ol>
+  return `${stepper(
+      steps.map((s) => s.label),
+      i,
+      'ch-goto',
+      steps.map((_, k) => String(k)),
+      'Expedition steps',
+    )}
     <div class="dock-body${little ? ' little' : ''}">
-      <h2 class="instruction" tabindex="-1" data-key="instruction">${esc(step.instruction)}</h2>
-      ${paused ? '<p class="paused-banner" role="status">Paused — narration and motion are stopped. Discussion time is never cut off.</p>' : ''}
-      ${body}
+      <section class="step-card">
+        <p class="step-eyebrow">Step ${i + 1} · ${esc(step.label)}</p>
+        <h2 class="instruction" tabindex="-1" data-key="instruction">${esc(step.instruction)}</h2>
+        ${paused ? '<p class="paused-banner" role="status">Paused — narration and motion are stopped. Discussion time is never cut off.</p>' : ''}
+        ${body}
+      </section>
       ${notes}
     </div>
-    <div class="lesson-nav">
-      ${btn('Back', 'ch-back', { cls: 'secondary', disabled: i === 0, icon: '←' })}
-      ${btn(paused ? 'Resume' : 'Pause', 'pause', { cls: 'secondary', pressed: paused, icon: paused ? '▶' : '❚❚' })}
-      ${btn('Replay', 'replay', { cls: 'secondary', icon: '↻', aria: 'Replay narration' })}
-      ${i < steps.length - 1 ? btn(`Next: ${steps[i + 1].label}`, 'ch-next', { cls: 'primary', icon: '→' }) : ''}
-    </div>`;
+    ${stepNav({ paused, canBack: i > 0, next: i < steps.length - 1 ? steps[i + 1].label : null, backAction: 'ch-back', nextAction: 'ch-next' })}`;
 }

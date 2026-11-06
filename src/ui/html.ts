@@ -55,3 +55,16 @@ export function refPhoto(subject: string, opts: { caption?: string; size?: 'card
     <figcaption>${opts.caption ? `<span>${esc(opts.caption)}</span> ` : ''}<span class="ref-credit">${esc(p.credit)} · <a href="${esc(p.sourceUrl)}" target="_blank" rel="noopener">${esc(p.license)}</a></span></figcaption>
   </figure>`;
 }
+
+/** Line icons for the round header and narration buttons (stroke uses the text colour). */
+const svg = (d: string) => `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+export const ICON = {
+  guide: svg('<path d="M6 3h12v18l-6-4-6 4z"/>'),
+  transcript: svg('<path d="M5 7h14M5 12h14M5 17h9"/>'),
+  settings: svg('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/>'),
+  fullscreen: svg('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
+  exitFullscreen: svg('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'),
+  pause: svg('<path d="M9 5v14M15 5v14"/>'),
+  play: svg('<path d="M7 5l12 7-12 7z" fill="currentColor"/>'),
+  replay: svg('<path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/>'),
+};
