@@ -16,6 +16,8 @@ export interface Preferences {
   ambientMotion: boolean;
   instantCamera: boolean;
   captions: boolean;
+  /** Name tags on the creatures (3D and illustrations). */
+  labels: boolean;
   autoNarrate: boolean;
   voiceVolume: number;
   ambienceVolume: number;
@@ -30,6 +32,7 @@ export function defaultPreferences(reducedMotion: boolean): Preferences {
     ambientMotion: !reducedMotion,
     instantCamera: reducedMotion,
     captions: true,
+    labels: true,
     autoNarrate: true,
     voiceVolume: 0.9,
     ambienceVolume: 0.35,
