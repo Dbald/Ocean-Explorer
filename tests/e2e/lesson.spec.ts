@@ -368,3 +368,19 @@ test('in 3D, the sargassum mats and trash appear only in Expedition 2', async ({
   await expect(page.locator('.cleanup-count')).toContainText('1 of 12');
   await expect(page.locator('#caption')).toContainText('Old fishing net');
 });
+
+test('home: the reef shows beside the lessons, the panel hides, and tapping an animal dives into Explore', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await expect(page.locator('.home-panel')).toBeVisible();
+  await expect(page.locator('.phase.is-soon')).toContainText('Coming soon');
+  // Hide the lessons: the whole reef is free, one button brings them back.
+  await press(page, 'Hide lessons and show the whole reef');
+  await expect(page.locator('.home-panel')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Show lessons' })).toBeFocused();
+  await press(page, 'Show lessons');
+  await expect(page.getByRole('heading', { name: 'Choose an expedition' })).toBeVisible();
+  // Tapping an animal on the home reef opens Explore with its card.
+  await page.locator('.hotspot', { hasText: 'Blue tang' }).click();
+  await expect(page.locator('.step-indicator')).toHaveText('Explore mode');
+  await expect(page.locator('#card h2')).toHaveText('Blue tang');
+});

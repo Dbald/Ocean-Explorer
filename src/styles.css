@@ -169,17 +169,41 @@ kbd { font-family: inherit; background: var(--panel-3); border: 1px solid var(--
 .step-indicator { font-size: 0.75em; font-weight: 700; color: var(--accent); margin-right: 0.3em; }
 
 /* ── Entry ──────────────────────────────────────────────────────────────── */
-.entry { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; padding: 5em 1rem 1rem; z-index: 10; }
-.entry-box {
-  max-width: 34em;
-  background: rgba(8, 42, 55, 0.94);
-  border: 2px solid var(--line);
-  border-radius: 22px;
-  padding: 1.2em 1.4em;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+/* The reef fills the screen; lessons sit in a side panel (a bottom sheet on portrait
+   screens) that can be hidden. The layer itself lets taps through to the reef. */
+.entry { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 10; pointer-events: none; }
+.home-panel, .home-peek { pointer-events: auto; }
+.home-panel {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: clamp(380px, 34vw, 760px);
+  display: flex; flex-direction: column;
+  padding-top: calc(56px + 1em);
+  background: rgba(8, 42, 55, 0.95);
+  border-left: 2px solid var(--line);
+  box-shadow: -18px 0 50px rgba(0, 0, 0, 0.3);
 }
-.entry-box h1 { font-size: 2em; }
-.entry-actions { margin: 0.9em 0; }
+.home-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--gap); padding: 0.2em 0.9em 0.4em; }
+.home-head h1 { font-size: 1.55em; margin: 0; }
+.home-head .eyebrow { margin-bottom: 0.15em; }
+.home-hide { flex: none; border-color: var(--line); }
+.home-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0.2em 0.9em 1em; }
+.tap-hint { display: flex; gap: 0.45em; align-items: center; font-weight: 700; color: var(--accent); background: var(--panel-2); border: 2px dashed var(--line); border-radius: 12px; padding: 0.45em 0.7em; }
+.entry-actions { margin: 0.6em 0 0.2em; }
+.home-peek { position: absolute; right: 1rem; bottom: 1rem; }
+.home-peek .btn { box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
+
+.phase { margin: 0.9em 0; }
+.phase > h2 { font-size: 1.35em; margin: 0.15em 0 0.25em; }
+.phase-head { display: flex; align-items: center; gap: 0.5em; flex-wrap: wrap; }
+.phase-num { font-size: 0.65em; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.live-badge, .soon-badge { font-size: 0.6em; font-weight: 800; border-radius: 999px; padding: 0.15em 0.65em; }
+.live-badge { background: var(--good-bg); color: var(--good); border: 2px solid var(--good); }
+.soon-badge { background: transparent; color: var(--ink-soft); border: 2px dashed var(--line); }
+.phase.is-soon { background: transparent; border: 2px dashed var(--line); border-radius: 16px; padding: 0.6em 0.9em; opacity: 0.85; }
+.phase.is-soon h2 { color: var(--ink-soft); }
+.exp-more { margin: 0.2em 0; font-size: 0.85em; }
+.exp-more summary { cursor: pointer; color: var(--ink-soft); font-weight: 700; min-height: 44px; display: flex; align-items: center; }
 
 /* ── Loading ────────────────────────────────────────────────────────────── */
 .loading { position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: grid; place-items: center; z-index: 30; background: rgba(6, 40, 52, 0.85); }
@@ -423,6 +447,14 @@ details[open] > summary::before { transform: rotate(90deg); }
     padding-top: 0;
   }
   .card-panel { top: auto; left: 0; width: auto; height: var(--inset-bottom); min-height: 40%; padding-top: 0.6em; border-left: 0; border-top: 4px solid var(--accent); }
+  .home-panel {
+    top: auto; left: 0; width: auto; max-height: 52%;
+    padding-top: 0.5em;
+    border-left: 0; border-top: 2px solid var(--line);
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.3);
+  }
+  .home-head h1 { font-size: 1.3em; }
   .video-panel { width: auto; right: 0.6em; }
   .brand-sub { display: none; }
   .topbar { padding: 0.25em 0.5em; }
@@ -451,11 +483,9 @@ details[open] > summary::before { transform: rotate(90deg); }
 .ref-credit a { color: inherit; }
 
 /* ── Expedition 2: The Changing Reef ─────────────────────────────────────── */
-.expeditions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15em), 1fr)); gap: var(--gap); margin: 0.6em 0; }
-.expedition { background: var(--panel-2); border: 2px solid var(--line); border-radius: 16px; padding: 0.7em 0.9em; }
-.expedition h2 { font-size: 1.3em; margin: 0.1em 0 0.2em; }
-.expedition .question { font-size: 1.05em; }
-.entry-box.wide { max-width: 52em; }
+.expedition { background: var(--panel-2); border: 2px solid var(--line); border-radius: 16px; padding: 0.7em 0.9em; margin: 0.6em 0; }
+.expedition h3 { font-size: 1.2em; margin: 0.1em 0 0.2em; }
+.expedition .question { font-size: 1em; margin-bottom: 0.3em; }
 
 .map-view {
   position: absolute; top: calc(56px + 1em); left: 0; right: var(--inset-right); bottom: var(--inset-bottom);
