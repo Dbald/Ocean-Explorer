@@ -141,7 +141,7 @@ Content lives in `src/content/changing.ts`, with every claim sourced and marked 
 
 ## Look and labels
 
-The interface follows The Codex design: a course header with progress, a *Live · Ocean Explorer* chip and a short prompt over the reef, and a side panel with a step tracker, a step card and a wide **Next** button. Creatures show a dot and their name only when the pointer is over them (or when selected), so the reef stays uncluttered on a classroom board. **Settings → Always show name labels** brings every name back.
+The interface follows The Codex's website: white panels, near-black text, teal for the reef trip, pill buttons, cards with a thin black outline, and extra-wide capital headings in Archivo (bundled from `@fontsource-variable/archivo`, SIL Open Font License, so nothing loads from the internet). It has a course header with progress, a *Live · Ocean Explorer* chip and a short prompt over the reef, and a side panel with a step tracker, a step card and a wide **Next** button. Creatures show a dot and their name only when the pointer is over them (or when selected), so the reef stays uncluttered on a classroom board. **Settings → Always show name labels** brings every name back.
 
 ## Real reference photos
 
