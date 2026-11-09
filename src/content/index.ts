@@ -5,6 +5,7 @@ import { foodRelationships, foodResources, shelterRelationships } from './food.t
 import { habitats } from './habitats.ts';
 import { connectItems, exitQuestions, steps } from './lesson.ts';
 import { narration } from './narration.ts';
+import { littleOceanSteps, oceanRecords, olderOceanSteps } from './openOcean.ts';
 import { organisms } from './organisms.ts';
 import { sources } from './sources.ts';
 import type { ContentBundle } from './validate.ts';
@@ -22,10 +23,13 @@ export const content: ContentBundle = {
   exitQuestions,
   findables,
   changing: changingRecords,
+  ocean: oceanRecords,
   stepNarrationIds: [
     ...steps.map((s) => s.narrationId),
     ...olderSteps.map((s) => s.narrationId),
     ...littleSteps.map((s) => s.narrationId),
     ...beltSnapshots.map((b) => b.narrationId),
+    ...olderOceanSteps.map((s) => s.narrationId),
+    ...littleOceanSteps.map((s) => s.narrationId),
   ],
 };

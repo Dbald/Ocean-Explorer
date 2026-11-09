@@ -19,6 +19,7 @@ function markAllReviewed(c: ContentBundle): ContentBundle {
     shelterRelationships: r(c.shelterRelationships),
     findables: r(c.findables),
     changing: r(c.changing),
+    ocean: r(c.ocean),
   };
 }
 

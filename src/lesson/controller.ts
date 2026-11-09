@@ -6,10 +6,22 @@
 import { connectItems, exitQuestions, shelterPrediction, stepIds } from '../content/lesson.ts';
 import { changingActions, changingChoiceItems, causes, litter, stepsFor, type CauseId, type ChangingLevel } from '../content/changing.ts';
 import { findableById } from '../content/findables.ts';
+import {
+  chainLinks,
+  feedItems,
+  oceanActions,
+  oceanAnimalById,
+  oceanChoiceItems,
+  oceanStepsFor,
+  plankton,
+  raftFinds,
+  type OceanLevel,
+  type OceanStop,
+} from '../content/openOcean.ts';
 import { organismById, organisms } from '../content/organisms.ts';
 import type { FoodChoiceItem, HabitatId, StepId } from '../content/types.ts';
 
-export type Mode = 'lesson' | 'explore' | 'find' | 'changing';
+export type Mode = 'lesson' | 'explore' | 'find' | 'changing' | 'ocean';
 export type ActivityStatus = 'completed' | 'attempted' | 'skipped';
 
 export interface ChoiceState {
@@ -39,6 +51,38 @@ export interface LessonState {
   find: FindState;
   /** Expedition 2: The Changing Reef. */
   changing: ChangingState;
+  /** Expedition 3: Plankton to Whale Sharks. */
+  ocean: OceanState;
+}
+
+export interface OceanState {
+  level: OceanLevel;
+  step: number;
+  /** Where the class is in the open-water scene. */
+  stop: OceanStop;
+  /** The plankton magnifier is open. */
+  magnifier: boolean;
+  seenPlankton: string[];
+  /** Open-ocean animals the class has tapped. */
+  met: string[];
+  /** Food chain links placed so far, in order (after sunlight). */
+  chain: string[];
+  /** The last card tapped that didn't come next. */
+  chainMiss: string | null;
+  prediction: string | null;
+  revealed: boolean;
+  /** The snappers are spawning in the Gladden Spit model. */
+  spawning: boolean;
+  sawSpawn: boolean;
+  /** Little Explorers: what has been offered to the whale shark, and the last one. */
+  fed: string[];
+  lastFeed: string | null;
+  /** Little Explorers: who has been found in the seaweed raft. */
+  found: string[];
+  exitIndex: number;
+  action: string | null;
+  actionScore: number | null;
+  actionDiscussed: boolean;
 }
 
 export interface ChangingState {
@@ -106,7 +150,23 @@ export type Action =
   | { type: 'chAction'; id: string }
   | { type: 'chScore'; score: number | null }
   | { type: 'chDiscussed' }
-  | { type: 'chHelper'; id: string };
+  | { type: 'chHelper'; id: string }
+  | { type: 'startOcean'; level: OceanLevel }
+  | { type: 'ocGoto'; step: number }
+  | { type: 'ocStop'; stop: OceanStop }
+  | { type: 'ocMagnifier'; open: boolean }
+  | { type: 'ocPlankton'; id: string }
+  | { type: 'ocMeet'; id: string }
+  | { type: 'ocChain'; id: string }
+  | { type: 'ocPredict'; option: string }
+  | { type: 'ocReveal' }
+  | { type: 'ocSpawn'; on: boolean }
+  | { type: 'ocFeed'; id: string }
+  | { type: 'ocFind'; id: string }
+  | { type: 'ocExitIndex'; index: number }
+  | { type: 'ocAction'; id: string }
+  | { type: 'ocScore'; score: number | null }
+  | { type: 'ocDiscussed' };
 
 export const FEATURED_COUNT = organisms.length;
 
@@ -131,6 +191,78 @@ export function initialChanging(level: ChangingLevel): ChangingState {
   };
 }
 
+export function initialOcean(level: OceanLevel): OceanState {
+  return {
+    level,
+    step: 0,
+    stop: 'blue',
+    magnifier: false,
+    seenPlankton: [],
+    met: [],
+    chain: [],
+    chainMiss: null,
+    prediction: null,
+    revealed: false,
+    spawning: false,
+    sawSpawn: false,
+    fed: [],
+    lastFeed: null,
+    found: [],
+    exitIndex: 0,
+    action: null,
+    actionScore: null,
+    actionDiscussed: false,
+  };
+}
+
+const addOnce = (list: string[], id: string) => (list.includes(id) ? list : [...list, id]);
+
+/** Expedition 3 actions. Pure, like the rest of the reducer. */
+function reduceOcean(state: LessonState, action: Action): LessonState {
+  const o = state.ocean;
+  const set = (patch: Partial<OceanState>): LessonState => ({ ...state, ocean: { ...o, ...patch } });
+  switch (action.type) {
+    case 'ocGoto': {
+      const max = oceanStepsFor(o.level).length - 1;
+      return { ...set({ step: clamp(action.step, 0, max), magnifier: false, chainMiss: null, lastFeed: null }), selectedOrganism: null };
+    }
+    case 'ocStop':
+      return set({ stop: action.stop });
+    case 'ocMagnifier':
+      return set({ magnifier: action.open });
+    case 'ocPlankton':
+      return plankton.some((p) => p.id === action.id) ? set({ seenPlankton: addOnce(o.seenPlankton, action.id) }) : state;
+    case 'ocMeet':
+      return oceanAnimalById.has(action.id) ? set({ met: addOnce(o.met, action.id) }) : state;
+    case 'ocChain': {
+      const next = chainLinks[o.chain.length];
+      if (!next) return state;
+      return action.id === next.id ? set({ chain: [...o.chain, next.id], chainMiss: null }) : set({ chainMiss: action.id });
+    }
+    case 'ocPredict':
+      return o.revealed ? state : set({ prediction: action.option });
+    case 'ocReveal':
+      return o.prediction === null ? state : set({ revealed: true });
+    case 'ocSpawn':
+      // The model opens only once the class has made a prediction.
+      return o.revealed ? set({ spawning: action.on, sawSpawn: o.sawSpawn || action.on }) : state;
+    case 'ocFeed':
+      return feedItems.some((f) => f.id === action.id) ? set({ fed: addOnce(o.fed, action.id), lastFeed: action.id }) : state;
+    case 'ocFind':
+      return raftFinds.includes(action.id) ? set({ found: addOnce(o.found, action.id), met: addOnce(o.met, action.id) }) : state;
+    case 'ocExitIndex':
+      return set({ exitIndex: clamp(action.index, 0, 2) });
+    case 'ocAction':
+      return oceanActions.choices.some((c) => c.id === action.id) ? set({ action: action.id }) : state;
+    case 'ocScore':
+      return set({ actionScore: action.score });
+    case 'ocDiscussed':
+      return o.action === null ? state : set({ actionDiscussed: true });
+    default:
+      return state;
+  }
+}
+
 export function initialState(): LessonState {
   return {
     version: 1,
@@ -149,6 +281,7 @@ export function initialState(): LessonState {
     protect: { choice: null, score: null, discussed: false },
     find: { order: [], index: 0, found: [], lastTap: null },
     changing: initialChanging('older'),
+    ocean: initialOcean('older'),
   };
 }
 
@@ -159,6 +292,7 @@ const choiceItems = new Map<string, FoodChoiceItem>([
   ...connectItems.map((i) => [i.id, i] as const),
   ...exitQuestions.flatMap((q) => (q.kind === 'food-choice' ? [[q.item.id, q.item] as const] : [])),
   ...changingChoiceItems.map((i) => [i.id, i] as const),
+  ...oceanChoiceItems.map((i) => [i.id, i] as const),
 ]);
 
 /** The shelter-reasoning exit question accepts any plausible, qualified answer. */
@@ -230,6 +364,24 @@ export function reduce(state: LessonState, action: Action): LessonState {
       const moved = next ? withStop(state, next.habitat) : { ...state, selectedOrganism: null };
       return { ...moved, find: { ...state.find, index, lastTap: null } };
     }
+    case 'startOcean':
+      return { ...initialState(), mode: 'ocean', ocean: initialOcean(action.level) };
+    case 'ocGoto':
+    case 'ocStop':
+    case 'ocMagnifier':
+    case 'ocPlankton':
+    case 'ocMeet':
+    case 'ocChain':
+    case 'ocPredict':
+    case 'ocReveal':
+    case 'ocSpawn':
+    case 'ocFeed':
+    case 'ocFind':
+    case 'ocExitIndex':
+    case 'ocAction':
+    case 'ocScore':
+    case 'ocDiscussed':
+      return state.mode === 'ocean' ? reduceOcean(state, action) : state;
     case 'startChanging':
       return { ...initialState(), mode: 'changing', stop: 'reef', visitedStops: ['reef'], changing: initialChanging(action.level) };
     case 'chGoto': {
@@ -437,6 +589,32 @@ export function changingSummary(state: LessonState): ActivitySummary[] {
   ];
 }
 
+/** Expedition 3 recap: completed, attempted or skipped — never completed just by moving past. */
+export function oceanSummary(state: LessonState): ActivitySummary[] {
+  const o = state.ocean;
+  const status = (done: boolean, tried: boolean): ActivityStatus => (done ? 'completed' : tried ? 'attempted' : 'skipped');
+  const food = feedItems.filter((f) => f.food).map((f) => f.id);
+  if (o.level === 'little') {
+    return [
+      { id: 'tiny', label: `Tiny things: ${o.seenPlankton.length} of ${plankton.length} plankton`, status: status(o.seenPlankton.length === plankton.length, o.seenPlankton.length > 0) },
+      { id: 'feed', label: 'Fed the whale shark', status: status(food.every((f) => o.fed.includes(f)), o.fed.length > 0) },
+      { id: 'raft', label: `Seaweed raft: found ${o.found.length} of ${raftFinds.length}`, status: status(o.found.length === raftFinds.length, o.found.length > 0) },
+    ];
+  }
+  const choiceStatusFor = (id: string) => {
+    const ch = choice(state, id);
+    return status(ch.submitted && ch.correct, ch.tries > 0 || ch.selected !== null);
+  };
+  return [
+    { id: 'dive', label: 'Into the blue: plankton and animals', status: status(o.seenPlankton.length === plankton.length && o.met.length >= 3, o.seenPlankton.length > 0 || o.met.length > 0) },
+    { id: 'chain', label: 'Food chain: from sunlight to a hunter', status: status(o.chain.length === chainLinks.length, o.chain.length > 0 || o.chainMiss !== null) },
+    { id: 'spawn', label: 'Spawning moon: prediction and test', status: status(o.revealed && o.sawSpawn, o.prediction !== null) },
+    { id: 'oc-exit-base', label: 'Explain: question 1 — the bottom of the food chain', status: choiceStatusFor('oc-exit-base') },
+    { id: 'oc-exit-gladden', label: 'Explain: question 2 — why whale sharks visit Gladden Spit', status: choiceStatusFor('oc-exit-gladden') },
+    { id: 'oc-exit-action', label: 'Explain: question 3 — how people can help', status: status(o.action !== null && (o.actionDiscussed || o.actionScore !== null), o.action !== null) },
+  ];
+}
+
 export const CHANGING_ACTION_IDS = changingActions.choices.map((x) => x.id);
 export const CAUSE_IDS = causes.map((x) => x.id);
 
@@ -460,6 +638,7 @@ export function hydrate(raw: unknown): LessonState {
     protect: { ...base.protect, ...(r.protect ?? {}) },
     find: { ...base.find, ...(r.find ?? {}), lastTap: null },
     changing: { ...base.changing, ...(r.changing ?? {}) },
+    ocean: { ...base.ocean, ...(r.ocean ?? {}), magnifier: false, chainMiss: null, lastFeed: null },
     choices: { ...(r.choices ?? {}) },
     selectedOrganism: null,
   };

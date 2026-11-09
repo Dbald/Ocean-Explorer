@@ -27,6 +27,8 @@ export interface ContentBundle {
   findables: Findable[];
   /** Expedition 2 records (belt snapshots, causes, effects, litter…). */
   changing: ContentRecord[];
+  /** Expedition 3 records (open-ocean animals, plankton, food chain, spawning…). */
+  ocean: ContentRecord[];
   /** Narration ids every lesson step needs. */
   stepNarrationIds: string[];
 }
@@ -111,6 +113,8 @@ export function validateContent(c: ContentBundle, opts: { release?: boolean } = 
 
   checkUnique('expedition 2 record', c.changing.map((r) => r.id));
   for (const r of c.changing) checkRecord('expedition 2', r);
+  checkUnique('expedition 3 record', c.ocean.map((r) => r.id));
+  for (const r of c.ocean) checkRecord('expedition 3', r);
   for (const id of c.stepNarrationIds) if (!narrationIds.has(id)) errors.push(`step narration "${id}" is missing`);
 
   checkUnique('findable', c.findables.map((f) => f.id));
