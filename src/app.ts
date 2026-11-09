@@ -11,7 +11,9 @@ import { findNarrationId, findableById, spotterNarrationId } from './content/fin
 import { narrationById } from './content/narration.ts';
 import { recordedAudioFor } from './content/recordings.ts';
 import { organismById, organisms } from './content/organisms.ts';
-import { LIVE_PHASE, upcomingPhases } from './content/phases.ts';
+import { LIVE_PHASE, OCEAN_PHASE, upcomingPhases } from './content/phases.ts';
+import { OCEAN_QUESTION, OCEAN_TITLE, chainLinks, feedItems, isOceanAnimal, oceanAnimalsAt, oceanStepsFor, raftFinds, type OceanLevel, type OceanStop } from './content/openOcean.ts';
+import { oceanStep, oceanStopFor, renderMagnifier, renderOceanDock } from './ui/oceanViews.ts';
 import type { HabitatId, StepId, VideoSegment } from './content/types.ts';
 import { currentFindTarget, initialState, reduce, type Action, type LessonState, type Mode } from './lesson/controller.ts';
 import { clearAll, loadPreferences, loadSession, savePreferences, saveSession, type Preferences } from './lesson/store.ts';
@@ -29,7 +31,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 
 interface SceneTarget {
   view: Viewpoint;
-  stop: HabitatId;
+  stop: HabitatId | OceanStop;
   shelter: 'before' | 'after' | null;
 }
 
@@ -198,9 +200,13 @@ export class App {
     }
 
     if (s.mode === 'changing') this.narrateChanging(prev, action);
+    if (s.mode === 'ocean') this.narrateOcean(prev, action);
 
     const chStepChanged = s.mode === 'changing' && (prev.mode !== 'changing' || prev.changing.step !== s.changing.step);
-    if ((stepChanged || chStepChanged) && s.mode !== null) this.focusKey('instruction');
+    const ocStepChanged = s.mode === 'ocean' && (prev.mode !== 'ocean' || prev.ocean.step !== s.ocean.step);
+    if ((stepChanged || chStepChanged || ocStepChanged) && s.mode !== null) this.focusKey('instruction');
+    // Little Explorers start the "tiny things" step looking through the magnifier.
+    if (ocStepChanged && oceanStep(s).kind === 'tiny' && !s.ocean.magnifier) this.dispatch({ type: 'ocMagnifier', open: true });
     if (action.type === 'selectOrganism' && action.id) this.focusKey('card-title');
   }
 
@@ -217,6 +223,21 @@ export class App {
     if (action.type === 'chReveal' && c.revealed && !prev.changing.revealed) this.narrate('ch-causes-reveal');
     if (action.type === 'chHelper') this.narrate(`ch-help-${action.id}`);
     if (action.type === 'chSargassum' && action.on && !prev.changing.sargassumSeen && c.level === 'older') this.narrate('ch-twist');
+  }
+
+  /** Expedition 3 narration: each step, each plankton, the food-chain twist, the spawning finding, feeding. */
+  private narrateOcean(prev: LessonState, action: Action) {
+    const s = this.state;
+    const o = s.ocean;
+    const stepChanged = prev.mode !== 'ocean' || prev.ocean.step !== o.step || action.type === 'startOcean';
+    if (stepChanged) {
+      const step = oceanStep(s);
+      return this.narrateSequence(step.kind === 'recap' && o.level === 'older' ? [step.narrationId, 'oc-oxygen'] : [step.narrationId]);
+    }
+    if (action.type === 'ocPlankton') this.narrate(`oc-plankton-${action.id}`, true);
+    if (action.type === 'ocChain' && o.chain.length === chainLinks.length && prev.ocean.chain.length < chainLinks.length) this.narrate('oc-chain-done');
+    if (action.type === 'ocSpawn' && o.sawSpawn && !prev.ocean.sawSpawn) this.narrate('oc-spawn-reveal');
+    if (action.type === 'ocFeed') this.narrate(`ocl-feed-${action.id}`, true);
   }
 
   private narrate(id: string, force = false) {
@@ -244,6 +265,7 @@ export class App {
   /** A tap on an animal in the scene: it always says hello; in the game it is also a guess. */
   private onTap(id: string) {
     if (isLitterId(id)) return this.cleanLitter(id);
+    if (this.state.mode === 'ocean') return this.oceanTap(id);
     this.scene3d?.react(id);
     // On the home screen, tapping an animal dives straight into Explore with its card open.
     if (this.state.mode === null) {
@@ -270,6 +292,30 @@ export class App {
     if (!left.length) lines.push('ch-little-thanks');
     else if (s.changing.level === 'little' && !left.some((l) => litterById.get(l)!.stop === item.stop)) lines.push('ch-little-clean-stop');
     this.narrateSequence(lines);
+  }
+
+  /** A tap on an open-ocean animal: it says hello; in the raft hunt it is also a find. */
+  private oceanTap(id: string) {
+    if (!isOceanAnimal(id)) return;
+    this.scene3d?.react(id);
+    const s = this.state;
+    if (s.ocean.level === 'little' && oceanStep(s).kind === 'raft' && raftFinds.includes(id)) {
+      this.dispatch({ type: 'ocFind', id });
+      return this.narrate(`oc-animal-${id}`, true);
+    }
+    this.dispatch({ type: 'ocMeet', id });
+    this.narrate(`oc-animal-${id}`, true);
+  }
+
+  private startOcean(level: OceanLevel) {
+    this.paused = false;
+    this.resumable = null;
+    this.startAudio();
+    this.dispatch({ type: 'startOcean', level });
+  }
+
+  private oceanNav(delta: number) {
+    this.dispatch({ type: 'ocGoto', step: this.state.ocean.step + delta });
   }
 
   private startChanging(level: ChangingLevel) {
@@ -412,6 +458,10 @@ export class App {
     const s = this.state;
     const at = (stop: HabitatId): SceneTarget => ({ view: stop, stop, shelter: null });
     if (s.mode === 'explore' || s.mode === 'find') return at(s.stop);
+    if (s.mode === 'ocean') {
+      const stop = oceanStopFor(s);
+      return { view: stop, stop, shelter: null };
+    }
     if (s.mode === 'changing') {
       const kind = changingStep(s).kind;
       return at(kind === 'reef' || kind === 'cleanup' || kind === 'seaweed' ? s.stop : 'reef');
@@ -458,23 +508,34 @@ export class App {
     const litter = kind === 'reef' || kind === 'cleanup' ? remainingLitter(s) : null;
     this.scene3d?.setSargassum(sargassum);
     this.scene3d?.setLitter(litter);
+    // Expedition 3: the open water, the spawning snappers, and who is here.
+    const ocean = s.mode === 'ocean';
+    const okind = ocean ? oceanStep(s).kind : null;
+    const spawning = okind === 'spawn' && s.ocean.spawning;
+    this.scene3d?.setOpenOcean(ocean);
+    if (ocean) this.scene3d?.setOceanStop(t.stop as OceanStop, okind === 'feed');
+    this.scene3d?.setSpawning(spawning);
+    // In the raft hunt the names would give the answers away, as in "Can you find…?".
+    const raftHunt = okind === 'raft';
+    const here = ocean
+      ? oceanAnimalsAt(t.stop as OceanStop).map((a) => ({ id: a.id, title: a.title, done: s.ocean.met.includes(a.id) }))
+      : findablesAt(t.stop as HabitatId).map((f) => ({ id: f.id, title: f.title, done: this.state.discovered.includes(f.id) }));
     // Name tags float over the creatures at the current stop, like the illustrations' labels.
     // Shown on hover (or for the selected animal) unless "Always show name labels" is on.
-    this.scene3d?.setLabels(
-      this.labelsVisible() && !t.shelter && !litter ? findablesAt(t.stop).map((f) => ({ id: f.id, title: f.title, done: this.state.discovered.includes(f.id) })) : null,
-      this.prefs.labelsAlways,
-    );
+    this.scene3d?.setLabels(this.labelsVisible() && !raftHunt && !t.shelter && !litter ? here : null, this.prefs.labelsAlways);
     this.staticScene?.render({
       stop: t.stop,
       selected: this.state.selectedOrganism,
       shelterView: t.shelter,
-      labels: this.labelsVisible(),
+      labels: this.labelsVisible() && !raftHunt,
       labelsAlways: this.prefs.labelsAlways,
-      discovered: this.state.discovered,
+      discovered: ocean ? s.ocean.met : this.state.discovered,
       hint: this.staticHint,
       sargassum,
       litter,
+      spawning,
     });
+    this.renderMagnifierLayer();
     const map = mapStateFor(s);
     this.mapView?.show(!!map);
     if (map) this.mapView?.render(map);
@@ -483,6 +544,15 @@ export class App {
   }
 
   // ── Rendering ──────────────────────────────────────────────────────────────
+
+  /** The plankton magnifier floats over the scene while it is open. */
+  private renderMagnifierLayer() {
+    const layer = $('magnifier-layer');
+    const open = this.state.mode === 'ocean' && this.state.ocean.magnifier;
+    layer.hidden = !open;
+    if (open) this.patch(layer, renderMagnifier(this.state));
+    else if (layer.innerHTML) layer.innerHTML = '';
+  }
 
   private renderAll() {
     this.renderTop();
@@ -512,7 +582,7 @@ export class App {
     const s = this.state;
     const parts: string[] = [];
     const sub = document.querySelector('.brand-sub');
-    if (sub) sub.textContent = s.mode === null ? PRODUCT_NAME : s.mode === 'changing' ? `Belize: ${CHANGING_TITLE}` : LESSON_TITLE;
+    if (sub) sub.textContent = s.mode === null ? PRODUCT_NAME : s.mode === 'changing' ? `Belize: ${CHANGING_TITLE}` : s.mode === 'ocean' ? `The Open Ocean: ${OCEAN_TITLE}` : LESSON_TITLE;
     // Progress through a guided lesson: a bar and "1 of 6". The full step name is there for screen readers.
     const progress = (i: number, n: number, label: string) =>
       `<div class="progress"><span class="progress-track" aria-hidden="true"><span style="width:${Math.round(((i + 1) / n) * 100)}%"></span></span><span class="progress-count" aria-hidden="true">${i + 1} of ${n}</span><span class="step-indicator sr-only">${esc(label)}</span></div>`;
@@ -523,6 +593,10 @@ export class App {
       parts.push('<span class="mode-pill step-indicator">Explore mode</span>');
     } else if (s.mode === 'find') {
       parts.push('<span class="mode-pill step-indicator">Can you find…?</span>');
+    } else if (s.mode === 'ocean') {
+      const list = oceanStepsFor(s.ocean.level);
+      const i = Math.min(s.ocean.step, list.length - 1);
+      parts.push(progress(i, list.length, `${s.ocean.level === 'little' ? 'Little Explorers' : 'Expedition 3'} · Step ${i + 1} of ${list.length}: ${list[i].label}`));
     } else if (s.mode === 'changing') {
       const list = stepsFor(s.changing.level);
       const i = Math.min(s.changing.step, list.length - 1);
@@ -543,6 +617,20 @@ export class App {
     if (s.mode === null) return 'Tap any animal to meet it';
     if (s.mode === 'explore') return 'Tap an animal to meet it';
     if (s.mode === 'find') return '';
+    if (s.mode === 'ocean') {
+      const byKind: Record<string, string> = {
+        briefing: 'Into the deep blue',
+        dive: 'Look closer: who lives out here?',
+        chain: 'Who eats whom?',
+        spawn: 'When do the whale sharks come?',
+        explain: 'Show what you know',
+        recap: 'What did we find?',
+        tiny: 'Look through the magnifier',
+        feed: 'What does the whale shark eat?',
+        raft: 'Who is hiding in the seaweed?',
+      };
+      return byKind[oceanStep(s).kind] ?? '';
+    }
     if (s.mode === 'changing') {
       const kind = changingStep(s).kind;
       const byKind: Record<string, string> = {
@@ -608,7 +696,9 @@ export class App {
           ? 'Resume Can you find…?'
           : r.mode === 'changing'
             ? `Resume ${CHANGING_TITLE} (step ${r.changing.step + 1}: ${stepsFor(r.changing.level)[r.changing.step]?.label ?? ''})`
-            : 'Resume exploring';
+            : r.mode === 'ocean'
+              ? `Resume ${OCEAN_TITLE} (step ${r.ocean.step + 1}: ${oceanStepsFor(r.ocean.level)[r.ocean.step]?.label ?? ''})`
+              : 'Resume exploring';
     const draft = organisms.some((o) => o.review.status !== 'reviewed');
     entry.dataset.open = String(this.homeOpen);
 
@@ -628,7 +718,7 @@ export class App {
       .map(
         (p, i) => `<section class="phase is-soon" aria-labelledby="phase-${esc(p.id)}-title">
           <div class="phase-head">
-            <span class="phase-num">Phase ${LIVE_PHASE.number + i + 1}</span>
+            <span class="phase-num">Phase ${OCEAN_PHASE.number + i + 1}</span>
             <span class="soon-badge">Coming soon</span>
           </div>
           <h2 id="phase-${esc(p.id)}-title">${esc(p.place)}</h2>
@@ -682,6 +772,26 @@ export class App {
             </article>
           </section>
 
+          <section class="phase is-live" aria-labelledby="phase-ocean-title">
+            <div class="phase-head">
+              <span class="phase-num">Phase ${OCEAN_PHASE.number}</span>
+              <span class="live-badge">New</span>
+            </div>
+            <h2 id="phase-ocean-title">${esc(OCEAN_PHASE.place)}</h2>
+            <p class="small muted">${esc(OCEAN_PHASE.teaser)}</p>
+
+            <article class="expedition" aria-labelledby="exp3-title">
+              <p class="eyebrow">Expedition 3</p>
+              <h3 id="exp3-title">${esc(OCEAN_TITLE)}</h3>
+              <p class="question">${esc(OCEAN_QUESTION)}</p>
+              <p class="small">Plankton, the open-ocean food chain, and the whale sharks of Gladden Spit, Belize.</p>
+              <div class="row entry-actions">
+                ${btn('Grades 3–6', 'start-ocean', { arg: 'older', cls: 'secondary big', key: 'entry-oc-older', icon: '▶', aria: `${OCEAN_TITLE}: Grades 3–6` })}
+                ${btn('Little Explorers (TK–2)', 'start-ocean', { arg: 'little', cls: 'secondary big', key: 'entry-oc-little', icon: '▶', aria: `${OCEAN_TITLE}: Little Explorers (TK–2)` })}
+              </div>
+            </article>
+          </section>
+
           ${soon}
 
           <p class="small muted">Sound starts only after you choose. Captions are on. About 10 minutes each, teacher-led.</p>
@@ -724,7 +834,7 @@ export class App {
     if (dock.hidden) return this.updateInsets();
     const ctx = { videos: this.videos };
     dock.dataset.mode = this.state.mode ?? '';
-    dock.dataset.step = this.state.mode === 'changing' ? changingStep(this.state).kind : this.state.step;
+    dock.dataset.step = this.state.mode === 'changing' ? changingStep(this.state).kind : this.state.mode === 'ocean' ? oceanStep(this.state).kind : this.state.step;
     const mode = this.state.mode;
     this.patch(
       dock,
@@ -734,6 +844,8 @@ export class App {
           ? renderFindDock(this.state)
           : mode === 'changing'
             ? renderChangingDock(this.state, this.paused)
+            : mode === 'ocean'
+              ? renderOceanDock(this.state, this.paused)
             : renderExploreDock(this.state),
     );
     this.updateInsets();
@@ -980,16 +1092,18 @@ export class App {
     const typing = target.closest('input, textarea, select, [contenteditable]');
     const modalOpen = document.querySelector('dialog[open]') || !$('guide').hidden || !$('recorder').hidden;
     if (typing || modalOpen || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (this.state.mode !== 'lesson' && this.state.mode !== 'changing') return;
-    const changing = this.state.mode === 'changing';
+    const mode = this.state.mode;
+    if (mode !== 'lesson' && mode !== 'changing' && mode !== 'ocean') return;
     const key = e.key.toLowerCase();
     if (key === 'n' || e.key === 'PageDown') {
       e.preventDefault();
-      if (changing) this.changingNav(1);
+      if (mode === 'changing') this.changingNav(1);
+      else if (mode === 'ocean') this.oceanNav(1);
       else this.dispatch({ type: 'next' });
     } else if (key === 'b' || e.key === 'PageUp') {
       e.preventDefault();
-      if (changing) this.changingNav(-1);
+      if (mode === 'changing') this.changingNav(-1);
+      else if (mode === 'ocean') this.oceanNav(-1);
       else this.dispatch({ type: 'back' });
     } else if (key === 'p') {
       this.togglePause();
@@ -999,7 +1113,12 @@ export class App {
   }
 
   private replay() {
-    const id = this.state.mode === 'changing' ? changingStep(this.state).narrationId : stepById.get(this.state.step)!.narrationId;
+    const id =
+      this.state.mode === 'changing'
+        ? changingStep(this.state).narrationId
+        : this.state.mode === 'ocean'
+          ? oceanStep(this.state).narrationId
+          : stepById.get(this.state.step)!.narrationId;
     this.narrate(id, true);
   }
 
@@ -1117,8 +1236,52 @@ export class App {
           $<HTMLDialogElement>('settings').close();
           this.paused = false;
           if (this.state.mode === 'changing') this.dispatch({ type: 'startChanging', level: this.state.changing.level });
+          else if (this.state.mode === 'ocean') this.dispatch({ type: 'startOcean', level: this.state.ocean.level });
           else this.dispatch({ type: 'restart' });
         });
+      case 'start-ocean':
+        return this.startOcean(a as OceanLevel);
+      case 'oc-goto':
+        return this.dispatch({ type: 'ocGoto', step: Number(a) });
+      case 'oc-next':
+        return this.oceanNav(1);
+      case 'oc-back':
+        return this.oceanNav(-1);
+      case 'oc-stop':
+        return this.dispatch({ type: 'ocStop', stop: a as OceanStop });
+      case 'oc-magnifier':
+        this.dispatch({ type: 'ocMagnifier', open: a === 'open' });
+        return this.focusKey(a === 'open' ? `oc-plankton:diatom` : 'oc-magnifier');
+      case 'oc-plankton':
+        return this.dispatch({ type: 'ocPlankton', id: a });
+      case 'oc-meet':
+      case 'oc-find':
+        // From the list in the panel: the same as tapping the animal in the scene.
+        return this.oceanTap(a);
+      case 'oc-chain':
+        this.dispatch({ type: 'ocChain', id: a });
+        return this.focusKey(this.state.ocean.chain.length === chainLinks.length ? 'instruction' : 'chain-legend');
+      case 'oc-predict':
+        return this.dispatch({ type: 'ocPredict', option: a });
+      case 'oc-reveal':
+        this.dispatch({ type: 'ocReveal' });
+        return this.focusKey('oc-spawn:on');
+      case 'oc-spawn':
+        return this.dispatch({ type: 'ocSpawn', on: a === 'on' });
+      case 'oc-feed': {
+        const item = feedItems.find((f) => f.id === a);
+        this.scene3d?.feedWhaleShark(!!item?.food);
+        return this.dispatch({ type: 'ocFeed', id: a });
+      }
+      case 'oc-exit':
+        this.dispatch({ type: 'ocExitIndex', index: Number(a) });
+        return this.focusKey('instruction');
+      case 'oc-action':
+        return this.dispatch({ type: 'ocAction', id: a });
+      case 'oc-score':
+        return this.dispatch({ type: 'ocScore', score: this.state.ocean.actionScore === Number(a) ? null : Number(a) });
+      case 'oc-discussed':
+        return this.dispatch({ type: 'ocDiscussed' });
       case 'start-changing':
         return this.startChanging(a as ChangingLevel);
       case 'ch-goto':

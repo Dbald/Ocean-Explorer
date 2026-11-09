@@ -14,6 +14,7 @@ import { steps as lessonSteps } from '../content/lesson.ts';
 import { stepsFor } from '../content/changing.ts';
 import type { LessonState, Mode } from '../lesson/controller.ts';
 import type { StepId } from '../content/types.ts';
+import { oceanStepsFor } from '../content/openOcean.ts';
 
 export const PROTOCOL_VERSION = 1;
 export const LESSON_ID = 'belize-living-reef';
@@ -66,7 +67,7 @@ export function isAllowedOrigin(origin: string, list: string[], dev: boolean): b
   return false;
 }
 
-const MODES: Mode[] = ['lesson', 'explore', 'find', 'changing'];
+const MODES: Mode[] = ['lesson', 'explore', 'find', 'changing', 'ocean'];
 
 /** Validates an incoming message. Anything malformed is ignored. */
 export function parseCommand(data: unknown): FromCodex | null {
@@ -94,6 +95,11 @@ export function stepPosition(s: LessonState): { step: string; index: number; tot
   if (s.mode === 'lesson') {
     const index = lessonSteps.findIndex((x) => x.id === s.step);
     return { step: s.step, index, total: lessonSteps.length, label: lessonSteps[index]?.label ?? s.step };
+  }
+  if (s.mode === 'ocean') {
+    const list = oceanStepsFor(s.ocean.level);
+    const index = Math.min(s.ocean.step, list.length - 1);
+    return { step: String(index), index, total: list.length, label: list[index]?.label ?? '' };
   }
   if (s.mode === 'changing') {
     const list = stepsFor(s.changing.level);

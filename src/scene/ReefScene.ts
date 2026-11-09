@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import type { HabitatId } from '../content/types.ts';
 import { AmbientLife } from './ambientLife.ts';
+import { OCEAN_VIEWS, OpenOcean } from './openOcean3d.ts';
 import { buildEnvironment, reefLift, terrainHeight, type Environment } from './environment.ts';
 import { buildReefGarden } from './reefGarden.ts';
 import { buildBarracuda, buildConch, buildElkhorn, buildParrotfish, buildSmallFish, buildTurtle, type CoralColony, type FishRig, type TurtleRig } from './organisms.ts';
@@ -34,7 +35,7 @@ const GRAZE_ROCK = { x: -12.95, z: 0.8, radius: 0.3 };
 /** Where the barracuda pauses, side-on to the camera, while its card is open. */
 const BARRACUDA_HOLD = new THREE.Vector3(-15.0, 1.5, -0.6);
 
-export type Viewpoint = HabitatId | 'shelter';
+export type Viewpoint = HabitatId | 'shelter' | 'blue' | 'raft' | 'spit';
 export type Quality = 'high' | 'low';
 
 interface View {
@@ -47,7 +48,12 @@ const VIEWS: Record<Viewpoint, View> = {
   seagrass: { position: new THREE.Vector3(4.6, 1.9, 4.6), target: new THREE.Vector3(4.0, 0.45, 0.2) },
   sand: { position: new THREE.Vector3(18.5, 1.25, 3.2), target: new THREE.Vector3(17.7, 0.15, 0.9) },
   shelter: { position: new THREE.Vector3(-18.1, 1.5, 4.3), target: new THREE.Vector3(-18.0, 0.6, 0.4) },
+  // Expedition 3: out past the reef's front edge, in open water.
+  ...OCEAN_VIEWS,
 };
+
+/** Open-ocean animals that move as schools or sit in a world-placed group: no squash-and-stretch on tap. */
+const NO_BOUNCE = new Set(['small-fish', 'cubera-snapper', 'young-fish', 'sargassum-raft']);
 
 export interface SceneOptions {
   quality: Quality;
@@ -129,6 +135,10 @@ export class ReefScene {
   private container: HTMLElement;
   private tex: ReefTextures = {};
   private life: AmbientLife | null = null;
+  /** Expedition 3's open water (hidden until it is needed). */
+  private ocean: OpenOcean | null = null;
+  private oceanT = 0;
+  private oceanTarget = 0;
 
   constructor(container: HTMLElement, opts: SceneOptions) {
     this.container = container;
@@ -272,6 +282,50 @@ export class ReefScene {
     this.scene.add(this.life.group);
   }
 
+  /** Expedition 3's open water, with its animals registered as tappable like the reef's. */
+  private buildOpenOcean() {
+    this.ocean = new OpenOcean(this.tex, this.opts.quality === 'low');
+    this.scene.add(this.ocean.group);
+    for (const t of this.ocean.tappables) {
+      if (t.tap && t.main.position.lengthSq() > 0) this.addTapArea(t.main, t.tap, 0);
+      this.register(t.id, t.main, t.others ?? []);
+    }
+  }
+
+  /**
+   * Out in the open ocean: shows the open-water world and deepens the water's
+   * colour. The reef stays where it is, so the camera swims from one to the other.
+   */
+  setOpenOcean(on: boolean) {
+    this.oceanTarget = on ? 1 : 0;
+    if (on) this.ocean?.setVisible(true);
+    if (this.opts.instantCamera) this.applyOcean((this.oceanT = this.oceanTarget));
+  }
+
+  private applyOcean(f: number) {
+    if (f === 0) this.ocean?.setVisible(false);
+    // Sargassum dimming (Expedition 2) and open water never run together, so each sets the fog alone.
+    if (this.sargT > 0) return;
+    const fog = this.scene.fog as THREE.FogExp2;
+    fog.color.set('#2b93a8').lerp(new THREE.Color('#14597a'), f);
+    fog.density = 0.045 + 0.012 * f;
+  }
+
+  /** Where the class is in the open water; `closeShark` brings the whale shark near for feeding. */
+  setOceanStop(stop: 'blue' | 'raft' | 'spit', closeShark = false) {
+    this.ocean?.setStop(stop, closeShark);
+  }
+
+  /** Gladden Spit: the snappers spawn and the whale sharks come in to feed. */
+  setSpawning(on: boolean) {
+    this.ocean?.setSpawning(on, this.opts.instantCamera);
+  }
+
+  /** The class offered the whale shark food (or something that isn't). */
+  feedWhaleShark(food: boolean) {
+    this.ocean?.feed(food);
+  }
+
   /** Expedition 2 layers. Built hidden; the app turns them on for The Changing Reef. */
   private buildChanging() {
     this.sargassum = buildSargassum();
@@ -339,6 +393,7 @@ export class ReefScene {
 
   /** Objects that bounce on tap. The coral thicket group spans the reef, so only its main colony bounces. */
   private bouncers(id: string): THREE.Object3D[] {
+    if (NO_BOUNCE.has(id)) return [];
     return id === 'elkhorn-coral' ? [this.focusColony.group] : (this.instances.get(id) ?? []);
   }
 
@@ -436,6 +491,7 @@ export class ReefScene {
     this.buildSpotters();
     this.buildChanging();
     this.buildGarden();
+    this.buildOpenOcean();
 
     // Fine skin texture on every animal (the corals, fans and sponges have their own surfaces).
     const surfaces = new Set(['elkhorn-coral', 'brain-coral', 'sea-fan', 'tube-sponge']);
@@ -854,6 +910,16 @@ export class ReefScene {
         l.cleanT = null;
         l.holder.visible = false;
       }
+    }
+
+    // The open water: fades in and out, and its spawning and feeding run even with motion off.
+    if (this.oceanT !== this.oceanTarget) {
+      this.oceanT = THREE.MathUtils.clamp(this.oceanT + Math.sign(this.oceanTarget - this.oceanT) * (dt / 1.6), 0, 1);
+      this.applyOcean(this.oceanT);
+    }
+    if (this.ocean?.group.visible) {
+      this.ocean.update(this.time, dt, this.opts.ambientMotion);
+      this.ocean.refreshBounds();
     }
 
     if (this.hintId) this.ring.scale.setScalar(this.ring.userData.baseScale * (1 + Math.sin(performance.now() / 160) * 0.06));

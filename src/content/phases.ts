@@ -20,10 +20,12 @@ export const LIVE_PHASE = {
   teaser: 'Dive the Belize Barrier Reef: who lives here, what they eat, and what is changing.',
 };
 
-export const upcomingPhases: UpcomingPhase[] = [
-  {
-    id: 'open-ocean',
-    place: 'The Open Ocean',
-    teaser: 'Leave the reef behind for the deep blue: drifting plankton, huge food webs and long migrations.',
-  },
-];
+/** Phase 2, live: the open water beyond Belize's reef. */
+export const OCEAN_PHASE = {
+  number: 2,
+  place: 'The Open Ocean',
+  teaser: 'Leave the reef behind for the deep blue: drifting plankton, a huge food web, and the whale sharks that visit Belize each spring.',
+};
+
+/** Phases still to come appear as "Coming soon" cards. Add one here and it shows on the home screen. */
+export const upcomingPhases: UpcomingPhase[] = [];

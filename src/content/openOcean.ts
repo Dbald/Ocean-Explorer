@@ -15,6 +15,10 @@ export const OCEAN_QUESTION = 'How does the smallest life feed the biggest fish?
 export const OCEAN_OBJECTIVE =
   'Students trace an open-ocean food chain from sunlight and plankton to big fish, and explain why whale sharks visit Belize’s Gladden Spit each spring.';
 
+/** The objective, said to the class. */
+export const OCEAN_INTRO =
+  'Today you’ll trace an open-ocean food chain from sunlight and plankton to big fish, and find out why whale sharks visit Belize’s Gladden Spit each spring.';
+
 export type OceanLevel = 'older' | 'little';
 export type OceanStepKind = 'briefing' | 'dive' | 'chain' | 'spawn' | 'explain' | 'recap' | 'tiny' | 'feed' | 'raft';
 /** Places in the open-water scene. */

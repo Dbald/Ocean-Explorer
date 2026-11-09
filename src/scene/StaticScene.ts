@@ -6,6 +6,7 @@
 import { habitatById } from '../content/habitats.ts';
 import { findablesAt } from '../content/findables.ts';
 import type { HabitatId } from '../content/types.ts';
+import { oceanAnimalsAt, oceanStops, type OceanStop } from '../content/openOcean.ts';
 
 /** Hotspot positions as percentages of the illustration (x, y). */
 const HOTSPOTS: Record<string, { x: number; y: number }> = {
@@ -287,6 +288,97 @@ function floor(color: string, ripples = false) {
     ${ripples ? [730, 770, 810, 850].map((y) => `<path d="M0 ${y} Q 200 ${y - 12} 400 ${y} T 800 ${y} T 1200 ${y} T 1600 ${y}" stroke="#cdbb8c" stroke-width="4" fill="none"/>`).join('') : ''}`;
 }
 
+// ── Expedition 3: the open ocean ─────────────────────────────────────────
+
+const OCEAN_STOPS = new Set(['blue', 'raft', 'spit']);
+const isOceanStop = (stop: string): stop is OceanStop => OCEAN_STOPS.has(stop);
+
+const deepWater = `
+  <defs>
+    <linearGradient id="deep" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a9ab4"/><stop offset="0.5" stop-color="#14658a"/><stop offset="1" stop-color="#0a3552"/></linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#deep)"/>
+  <g fill="#ffffff" opacity="0.07">${[150, 520, 900, 1280].map((x) => `<path d="M${x} 0 l120 0 l-260 900 l-120 0z"/>`).join('')}</g>
+  <g fill="#e6fbf2" opacity="0.5">${Array.from({ length: 90 }, (_, i) => `<circle cx="${(i * 173) % 1600}" cy="${(i * 97) % 900}" r="${1.5 + (i % 3)}"/>`).join('')}</g>`;
+
+/** Whale shark side view: dark with white spots, wide flat mouth at the front. */
+const whaleShark = (x: number, y: number, s = 1, flip = false, open = false) => `
+  <g transform="translate(${x} ${y}) scale(${flip ? -s : s} ${s})">
+    <path d="M-330 -10 L-420 -120 L-395 -10 L-430 70 Z" fill="#3a4e5d"/>
+    <path d="M-60 -70 L-10 -150 L40 -70 Z" fill="#3a4e5d"/>
+    <path d="M-250 -40 L-230 -80 L-205 -40 Z" fill="#3a4e5d"/>
+    <path d="M-340 0 C-200 -90 150 -100 330 -40 C350 -20 350 20 330 35 C150 70 -200 60 -340 0 Z" fill="#40586a"/>
+    <path d="M-300 20 C-150 55 150 60 320 34 C250 60 -150 70 -300 20 Z" fill="#e8edf0"/>
+    <path d="M80 30 L20 110 L-10 105 L30 40 Z" fill="#3a4e5d"/>
+    ${Array.from({ length: 60 }, (_, i) => `<circle cx="${-300 + ((i * 47) % 600)}" cy="${-50 + ((i * 29) % 60)}" r="${4 + (i % 3)}" fill="#f1f5f7"/>`).join('')}
+    <g stroke="#2a3a46" stroke-width="5">${[0, 1, 2, 3, 4].map((i) => `<path d="M${215 + i * 12} -20 q-6 20 0 40" fill="none"/>`).join('')}</g>
+    <ellipse cx="335" cy="${open ? 8 : 5}" rx="16" ry="${open ? 22 : 8}" fill="#141a20"/>
+    <circle cx="300" cy="-14" r="6" fill="#141a20"/>
+  </g>`;
+
+const fishSchool = (x: number, y: number, n: number, color: string, size = 1) =>
+  `<g fill="${color}">${Array.from({ length: n }, (_, i) => {
+    const fx = x + ((i * 53) % 260) - 130;
+    const fy = y + ((i * 37) % 140) - 70;
+    return `<g transform="translate(${fx} ${fy}) scale(${size})"><ellipse cx="0" cy="0" rx="16" ry="6"/><path d="M-14 0 l-10 -7 l0 14z"/></g>`;
+  }).join('')}</g>`;
+
+const mahi = (x: number, y: number, flip = false) => `
+  <g transform="translate(${x} ${y}) scale(${flip ? -1 : 1} 1)">
+    <path d="M-110 0 L-140 -30 L-130 0 L-140 30 Z" fill="#2e9a8f"/>
+    <path d="M-110 -6 C-60 -28 40 -40 90 -30 C110 -20 112 10 95 20 C40 30 -60 22 -110 6 Z" fill="#d9c43a"/>
+    <path d="M-100 -12 C-40 -40 50 -52 92 -30 C50 -38 -40 -30 -100 -12 Z" fill="#1f7fa0"/>
+    <circle cx="80" cy="-6" r="5" fill="#141a20"/>
+  </g>`;
+
+const youngTurtle = (x: number, y: number) => `
+  <g transform="translate(${x} ${y})">
+    <ellipse cx="0" cy="0" rx="34" ry="22" fill="#8a5a2a"/>
+    <path d="M-20 -6 L20 -6 M-14 8 L14 8" stroke="#d8b070" stroke-width="3"/>
+    <ellipse cx="40" cy="-2" rx="12" ry="9" fill="#6a5a30"/>
+    <path d="M-10 18 l-22 18 M10 18 l18 20 M-10 -18 l-20 -16 M10 -18 l18 -16" stroke="#6a5a30" stroke-width="8" stroke-linecap="round"/>
+  </g>`;
+
+const raftClumps = (cx: number, cy: number) =>
+  `<g>${Array.from({ length: 16 }, (_, i) => `<ellipse cx="${cx + ((i * 71) % 620) - 310}" cy="${cy + ((i * 23) % 60) - 30}" rx="${60 + (i % 4) * 18}" ry="${22 + (i % 3) * 6}" fill="${i % 2 ? '#7d5a1c' : '#5e4416'}"/>`).join('')}
+    ${Array.from({ length: 80 }, (_, i) => `<circle cx="${cx + ((i * 37) % 640) - 320}" cy="${cy + ((i * 19) % 70) - 35}" r="${5 + (i % 3)}" fill="#a9792a"/>`).join('')}
+    ${Array.from({ length: 24 }, (_, i) => `<path d="M${cx + ((i * 53) % 600) - 300} ${cy + 20} q${(i % 5) * 4 - 8} 40 ${(i % 3) * 6 - 6} ${60 + (i % 4) * 20}" stroke="#6b4d18" stroke-width="4" fill="none"/>`).join('')}</g>`;
+
+function oceanIllustration(stop: OceanStop, spawning: boolean) {
+  switch (stop) {
+    case 'blue':
+      return `${deepWater}
+        ${fishSchool(420, 330, 26, '#c9dde6')}
+        ${whaleShark(900, 520, 1.15, false)}`;
+    case 'raft':
+      return `${deepWater}
+        <rect width="1600" height="120" fill="#9fe2ee" opacity="0.6"/>
+        ${raftClumps(780, 150)}
+        ${youngTurtle(640, 230)}
+        ${fishSchool(940, 260, 6, '#c2a24a', 0.7)}
+        ${mahi(560, 520)}
+        ${mahi(1120, 600, true)}`;
+    case 'spit':
+      return `${deepWater}
+        <path d="M900 900 L1000 560 Q1080 520 1200 540 L1600 520 L1600 900 Z" fill="#7a7363"/>
+        <g>${Array.from({ length: 14 }, (_, i) => `<ellipse cx="${1020 + i * 42}" cy="${540 - (i % 3) * 8}" rx="${30 + (i % 3) * 8}" ry="${22 + (i % 2) * 6}" fill="${['#c9a24e', '#b08544', '#8e5aa8', '#d0703a'][i % 4]}"/>`).join('')}</g>
+        ${fishSchool(820, spawning ? 360 : 480, 22, '#8a4f42', 1.4)}
+        ${spawning ? `<g fill="#fff6e0" opacity="0.8">${Array.from({ length: 160 }, (_, i) => `<circle cx="${820 + ((i * 41) % 360) - 180}" cy="${230 + ((i * 29) % 200) - 100}" r="${2 + (i % 3)}"/>`).join('')}</g>
+          ${whaleShark(420, 260, 0.75, false, true)}${whaleShark(1180, 180, 0.6, true, true)}` : ''}`;
+  }
+}
+
+/** Where each open-ocean animal sits in its illustration (percent). */
+const OCEAN_HOTSPOTS: Record<string, { x: number; y: number }> = {
+  'whale-shark': { x: 58, y: 56 },
+  'small-fish': { x: 26, y: 37 },
+  'sargassum-raft': { x: 72, y: 15 },
+  'young-turtle': { x: 40, y: 26 },
+  'young-fish': { x: 59, y: 29 },
+  'mahi-mahi': { x: 35, y: 58 },
+  'cubera-snapper': { x: 51, y: 50 },
+};
+
 function illustration(stop: HabitatId, shelterView: 'before' | 'after' | null) {
   const reduced = shelterView === 'after';
   switch (stop) {
@@ -330,7 +422,7 @@ function illustration(stop: HabitatId, shelterView: 'before' | 'after' | null) {
 }
 
 export interface StaticSceneState {
-  stop: HabitatId;
+  stop: HabitatId | OceanStop;
   selected: string | null;
   shelterView: 'before' | 'after' | null;
   /** In the "Can you find…?" game the buttons carry no visible names, so the picture is the puzzle. */
@@ -341,6 +433,8 @@ export interface StaticSceneState {
   labelsAlways?: boolean;
   /** Animals the class has met (their dot turns teal, with a ✓). */
   discovered?: string[];
+  /** Expedition 3: the snappers are spawning at Gladden Spit. */
+  spawning?: boolean;
   /** Expedition 2: thick sargassum overhead. */
   sargassum?: boolean;
   /** Expedition 2: trash still in the water (null = none shown). While trash is shown, the animals' buttons step aside. */
@@ -361,24 +455,26 @@ export class StaticScene {
   }
 
   render(s: StaticSceneState) {
-    const key = `${s.stop}|${s.selected}|${s.shelterView}|${s.labels}|${s.labelsAlways}|${s.discovered?.join(',')}|${s.hint}|${s.sargassum}|${s.litter?.join(',') ?? '-'}`;
+    const key = `${s.stop}|${s.selected}|${s.shelterView}|${s.labels}|${s.labelsAlways}|${s.discovered?.join(',')}|${s.hint}|${s.sargassum}|${s.litter?.join(',') ?? '-'}|${s.spawning}`;
     if (key === this.lastKey) return;
     this.lastKey = key;
     const focused = (document.activeElement as HTMLElement | null)?.dataset?.organism;
-    const habitat = habitatById.get(s.stop);
-    const here = findablesAt(s.stop);
+    const ocean = isOceanStop(s.stop);
+    const label = ocean ? (oceanStops.find((o) => o.id === s.stop)?.arrival ?? '') : (habitatById.get(s.stop as HabitatId)?.accessibleDescription ?? '');
+    const here: { id: string; title: string }[] = ocean ? oceanAnimalsAt(s.stop as OceanStop) : findablesAt(s.stop as HabitatId);
+    const spots = ocean ? OCEAN_HOTSPOTS : HOTSPOTS;
     // While a card is open, zoom in on that organism so the class can see the detail it asks about.
-    const focus = s.selected && !s.shelterView ? HOTSPOTS[s.selected] : undefined;
+    const focus = s.selected && !s.shelterView ? spots[s.selected] : undefined;
     const zoomed = !!focus && here.some((o) => o.id === s.selected);
     const zoom = zoomed && focus ? ` style="transform: scale(2); transform-origin: ${focus.x}% ${focus.y}%"` : '';
     this.root.innerHTML = `<div class="static-frame">
-      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${habitat?.accessibleDescription ?? ''}"${zoom}>
-        ${illustration(s.stop, s.shelterView)}
-        ${s.sargassum ? sargassumOverlay(s.stop) : ''}
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${label}"${zoom}>
+        ${ocean ? oceanIllustration(s.stop as OceanStop, !!s.spawning) : illustration(s.stop as HabitatId, s.shelterView)}
+        ${s.sargassum && !ocean ? sargassumOverlay(s.stop as HabitatId) : ''}
       </svg>
       ${s.shelterView || zoomed || s.litter ? '' : here
         .map((o) => {
-          const p = HOTSPOTS[o.id];
+          const p = spots[o.id];
           const done = !!s.discovered?.includes(o.id);
           const cls = `hotspot${s.labels ? '' : ' is-blank'}${s.labels && s.labelsAlways ? ' is-labelled' : ''}${done ? ' is-done' : ''}${o.id === s.selected ? ' is-selected' : ''}${o.id === s.hint ? ' is-hint' : ''}`;
           // A dot on the animal; its name appears beside it on hover, focus or selection.

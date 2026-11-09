@@ -50,6 +50,18 @@ Every record in `src/content/changing.ts` (the belt snapshots, the three causes,
 - [ ] Trash facts are supported by the NOAA sources listed below.
 - [ ] Safety wording: sargassum clean-up is for adults with gloves.
 
+## Expedition 3: Plankton to Whale Sharks
+
+Every record in `src/content/openOcean.ts` (the open-ocean animals, the three plankton, the food chain, the Gladden Spit reveal, the oxygen fact, the whale shark's status and the exit questions) is a draft awaiting review.
+
+- [ ] The food chain (sunlight → phytoplankton → zooplankton → small fish → mahi-mahi) is a fair simplified chain. Mahi-mahi prey is given only as "small fish"; NOAA supports mahi-mahi as top predators near the surface.
+- [ ] The whale shark twist is right: it filters plankton (and fish eggs) directly, so it skips the middle of the chain.
+- [ ] The Gladden Spit reveal matches Heyman et al. (2001): whale sharks gather in April and May, around the full and last-quarter moons, and feed on the spawn of cubera and dog snappers. The spawning model is labelled **Simplified example**.
+- [ ] The oxygen fact keeps NOAA's hedge ("scientists estimate about half").
+- [ ] The whale shark is still listed as Endangered by the IUCN (2016 assessment).
+- [ ] Sargassum is described as a home in the open ocean, consistent with Expedition 2's "too much near shore" message.
+- [ ] Little Explorers: plankton and snapper eggs are food; the bottle and rock are clearly not.
+
 ## Recording a review
 
 In the record's file under `src/content/`, change its `review` to:
@@ -92,3 +104,11 @@ The gate also rejects a `reviewed` record that has no reviewer or date.
 | `noaa-microplastics` | [NOAA National Ocean Service — What are microplastics?](https://oceanservice.noaa.gov/facts/microplastics.html) | Microplastics are pieces smaller than 5 mm; many come from larger plastic debris that breaks into smaller and smaller pieces, and they can harm ocean life. |
 | `abc7-la-heatwave` | [ABC7 Los Angeles — Warm ocean waters bring unusual fishing boom off Southern California coast](https://abc7.com/post/warm-ocean-waters-bring-unusual-fishing-boom-off-southern-california-coast/19792295/) | A 2026 marine heatwave brought warm-water fish usually found farther south to Southern California, according to a California Department of Fish and Wildlife scientist. |
 | `accuweather-la-sharks` | [AccuWeather — Warmer ocean waters draw more sharks to Southern California](https://www.accuweather.com/en/climate/warmer-ocean-waters-draw-more-sharks-to-southern-california/1924130) | Warm-water shark species that usually stay farther south have been seen more often off Southern California as waters warm. |
+| `heyman-2001-gladden` | [Marine Ecology Progress Series (Inter-Research) — Whale sharks *Rhincodon typus* aggregate to feed on fish spawn in Belize (Heyman et al., 2001)](https://www.int-res.com/abstracts/meps/v215/p275-282/) | At Gladden Spit, whale sharks gather in April and May around the full and last-quarter moons, during a multispecies snapper spawning aggregation, and feed on cubera and dog snapper spawn. |
+| `iucn-whale-shark` | [IUCN Red List — Whale shark, *Rhincodon typus* (2016 assessment)](https://www.iucnredlist.org/species/19488/2365291) | Endangered (2016); threats include fishing, bycatch and ship strikes. |
+| `wa-whale-shark` | [Department of Fisheries, Western Australia — Whale shark fact sheet](https://www.fish.wa.gov.au/Documents/recreational_fishing/fact_sheets/fact_sheet_whale_shark.pdf) | The world's largest living fish; a docile filter feeder that looks for plankton. |
+| `noaa-phytoplankton` | [NOAA National Ocean Service — What are phytoplankton?](https://oceanservice.noaa.gov/facts/phyto.html) | Phytoplankton live where sunlight reaches and feed many sea creatures; diatoms and dinoflagellates are the two main groups. |
+| `noaa-plankton` | [NOAA National Ocean Service — What are plankton?](https://oceanservice.noaa.gov/facts/plankton.html) | Plankton drift with the water; most zooplankton eat phytoplankton and are eaten by larger animals. |
+| `noaa-ocean-oxygen` | [NOAA National Ocean Service — How much oxygen comes from the ocean?](https://oceanservice.noaa.gov/facts/ocean-oxygen.html) | Scientists estimate roughly half of Earth's oxygen comes from the ocean, mostly from plankton. |
+| `noaa-mahi` | [NOAA Fisheries — Atlantic mahi-mahi](https://www.fisheries.noaa.gov/species/atlantic-mahi-mahi) | Top predators near the surface; often found near floating sargassum, and spawn under it. |
+| `noaa-oe-sargassum` | [NOAA Ocean Exploration — Sargassum](https://oceanexplorer.noaa.gov/explorations/03edge/background/sargassum/sargassum.html) | Floating sargassum gives food and shelter to young fish and young sea turtles. |

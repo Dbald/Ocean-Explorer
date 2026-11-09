@@ -151,6 +151,54 @@ These go with The Changing Reef. Until they are recorded, the browser voice read
 | net | `ch-litter-net.mp3` | Old fishing net! Old fishing nets can trap animals and damage coral. |
 | line | `ch-litter-line.mp3` | Fishing line! Fishing line can tangle around animals. |
 
+## Expedition 3 lines to record (28 lines, about 3 minutes)
+
+These go with Plankton to Whale Sharks. Until they are recorded, the browser voice reads them.
+
+### Grades 3–6
+
+| Line | File | Words to read |
+|---|---|---|
+| Step 1: Briefing | `oc-step-briefing.mp3` | How does the smallest life feed the biggest fish? Today we swim off the reef into the open ocean, where the biggest fish in the world eats some of the smallest living things. |
+| Step 2: Dive | `oc-step-dive.mp3` | Out here there is only water. Use the magnifier to see the plankton, then meet the animals of the open ocean. |
+| Step 3: Food chain | `oc-step-chain.mp3` | Let’s build a food chain. Start with sunlight, then tap who comes next. |
+| Step 4: Gladden Spit | `oc-step-spawn.mp3` | Every spring, whale sharks come to Gladden Spit in Belize. Make a prediction: when do they come, and why? Then test your idea. |
+| Step 5: Explain | `oc-step-explain.mp3` | Now it’s your turn to explain. Answer three questions about what you learned. |
+| Step 6: Recap | `oc-step-recap.mp3` | Phytoplankton use sunlight to make food, and the energy passes up the food chain. The biggest fish, the whale shark, eats plankton, and comes to Gladden Spit to eat snapper eggs. |
+| Food chain complete | `oc-chain-done.mp3` | The whale shark, the biggest fish of all, skips the middle of the chain. It filters plankton straight out of the water. |
+| What scientists found | `oc-spawn-reveal.mp3` | Scientists found that whale sharks gather at Gladden Spit in April and May, around the full moon, when cubera and dog snappers spawn. The whale sharks feed on the clouds of eggs. |
+| Oxygen fact | `oc-oxygen.mp3` | Scientists estimate that about half of the oxygen made on Earth comes from the ocean, mostly from tiny plankton. |
+
+### Little Explorers (TK–2)
+
+| Line | File | Words to read |
+|---|---|---|
+| Step 1: Story | `ocl-story.mp3` | Let’s swim past the reef into the big blue ocean! Out here live the tiniest living things, and the biggest fish in the world. |
+| Step 2: Tiny things | `ocl-tiny.mp3` | Look through the magnifier! Tap each tiny thing to meet it. |
+| Step 3: Feed the whale shark | `ocl-feed.mp3` | The whale shark is hungry! What does it eat? Tap the food. |
+| Step 4: The seaweed raft | `ocl-raft.mp3` | Look up! A raft of floating seaweed. Who is hiding here? Tap to find them. |
+| Step 5: Well done | `ocl-done.mp3` | You did it! The tiniest things feed the biggest fish. Remember, in the ocean we look at animals, but we never touch them. |
+| Food: plankton | `ocl-feed-plankton.mp3` | Yum! Tiny plankton. That is whale shark food. |
+| Food: snapper eggs | `ocl-feed-eggs.mp3` | Yum! A cloud of snapper eggs. |
+| Not food: bottle | `ocl-feed-bottle.mp3` | No! Plastic is not food. Trash goes in the bin. |
+| Not food: rock | `ocl-feed-rock.mp3` | No, a rock is not food. |
+
+### Animal and plankton facts (heard when a child taps one)
+
+| Line | File | Words to read |
+|---|---|---|
+| Whale shark | `oc-animal-whale-shark.mp3` | Whale shark! The biggest fish in the world eats some of the smallest food: plankton. |
+| Small fish | `oc-animal-small-fish.mp3` | A school of small fish. They eat tiny zooplankton, and bigger fish eat them. |
+| Mahi-mahi | `oc-animal-mahi-mahi.mp3` | Mahi-mahi! A fast hunter that often swims under floating sargassum. |
+| Young sea turtle | `oc-animal-young-turtle.mp3` | A young sea turtle! It finds food and shelter in the floating sargassum. |
+| Young fish | `oc-animal-young-fish.mp3` | Young fish! The sargassum gives them food and a place to hide. |
+| Sargassum raft | `oc-animal-sargassum-raft.mp3` | Floating sargassum! Out here it is a home, with food and shelter for young animals. |
+| Cubera snappers | `oc-animal-cubera-snapper.mp3` | Cubera snappers! At Gladden Spit they gather to spawn, and whale sharks come to eat their eggs. |
+| Diatom | `oc-plankton-diatom.mp3` | A diatom: phytoplankton with a hard shell made of parts that fit together. It uses sunlight to make its own food. |
+| Dinoflagellate | `oc-plankton-dinoflagellate.mp3` | A dinoflagellate: phytoplankton that swims with a tiny whip-like tail. It uses sunlight to make its own food. |
+| Copepod | `oc-plankton-copepod.mp3` | A copepod: a tiny animal. Zooplankton like this eat phytoplankton, and bigger animals eat them. |
+
+
 ## Adding recordings to the lesson
 
 1. Convert each file to MP3 (mono, normalised loudness):

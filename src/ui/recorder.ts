@@ -4,6 +4,7 @@
  * whole script in one sitting. Nothing is uploaded: files are saved locally.
  */
 import { beltSnapshots, helpers, littleSteps, olderSteps } from '../content/changing.ts';
+import { feedItems, littleOceanSteps, oceanAnimals, olderOceanSteps, plankton } from '../content/openOcean.ts';
 import { findables, findNarrationId, spotterNarrationId } from '../content/findables.ts';
 import { habitats } from '../content/habitats.ts';
 import { steps } from '../content/lesson.ts';
@@ -55,6 +56,26 @@ const groups: { title: string; ids: { id: string; label: string }[] }[] = [
   {
     title: 'Expedition 2: trash facts (heard when a child picks up trash)',
     ids: (['bag', 'bottle', 'net', 'line'] as const).map((k) => ({ id: `ch-litter-${k}`, label: k === 'net' ? 'Fishing net' : k === 'line' ? 'Fishing line' : `Plastic ${k}` })),
+  },
+  {
+    title: 'Expedition 3: Plankton to Whale Sharks (Grades 3–6)',
+    ids: [
+      ...olderOceanSteps.map((st, i) => ({ id: st.narrationId, label: `Step ${i + 1}: ${st.label}` })),
+      { id: 'oc-chain-done', label: 'The food-chain twist' },
+      { id: 'oc-spawn-reveal', label: 'What scientists found at Gladden Spit' },
+      { id: 'oc-oxygen', label: 'Did you know? (oxygen)' },
+    ],
+  },
+  {
+    title: 'Expedition 3: Little Explorers (TK–2)',
+    ids: [
+      ...littleOceanSteps.map((st, i) => ({ id: st.narrationId, label: `Step ${i + 1}: ${st.label}` })),
+      ...feedItems.map((f) => ({ id: `ocl-feed-${f.id}`, label: `Feeding: ${f.label}` })),
+    ],
+  },
+  {
+    title: 'Expedition 3: open-ocean animals and plankton (heard when tapped)',
+    ids: [...oceanAnimals.map((a) => ({ id: `oc-animal-${a.id}`, label: a.title })), ...plankton.map((p) => ({ id: `oc-plankton-${p.id}`, label: p.title }))],
   },
 ];
 

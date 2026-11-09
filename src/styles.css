@@ -533,6 +533,46 @@ details[open] > summary::before { transform: rotate(90deg); }
   .small-btn, .step-btn, .subtab, details summary { min-height: 44px; }
 }
 
+/* ── Expedition 3: Plankton to Whale Sharks ─────────────────────────────── */
+.chain { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35em; margin: 0.4em 0 0.6em; }
+.chain .arrow { color: var(--food); font-weight: 900; font-size: 1.2em; }
+.chain-slot { display: inline-flex; flex-direction: column; justify-content: center; min-width: 4.2em; min-height: 3em; padding: 0.3em 0.6em; border-radius: 16px; border: 2px dashed var(--line); font-size: 0.8em; text-align: center; }
+.chain-slot.is-placed { border: 1.5px solid var(--line-strong); background: var(--panel-2); }
+.chain-slot.is-sun { border: 0; background: #fff3cf; color: #121316; }
+.moon-note { display: flex; gap: 0.5em; align-items: center; font-weight: 700; }
+.helper-card.is-wrong { border-color: var(--retry); background: var(--retry-bg); }
+
+/* The magnifier: a round lens over the reef. Plankton are drawn much bigger than life. */
+.magnifier-layer {
+  position: absolute; z-index: 18;
+  top: calc(var(--topbar-h) + 3.2em); left: 0; right: var(--inset-right); bottom: calc(var(--inset-bottom) + 0.6em);
+  display: grid; place-items: center; pointer-events: none;
+}
+.magnifier { pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 0.6em; }
+.lens {
+  position: relative; width: min(50vh, 40vw); aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #bff1f0, #5cc3c9 55%, #2b8fa3);
+  border: 14px solid #121316; box-shadow: 0 0 0 4px #fff, 0 20px 60px rgba(0, 0, 0, 0.45), inset 0 0 40px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+.lens::after { content: ''; position: absolute; inset: 8% 50% 50% 10%; border-radius: 50%; background: rgba(255, 255, 255, 0.25); filter: blur(14px); pointer-events: none; }
+.plankton {
+  position: absolute; transform: translate(-50%, -50%);
+  width: 34%; aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; font: inherit;
+  border-radius: 50%; display: flex; flex-direction: column; align-items: center;
+}
+.plankton svg { width: 100%; height: 100%; animation: oe-drift 6s ease-in-out infinite alternate; }
+.plankton:nth-child(2) svg { animation-delay: -2s; }
+.plankton:nth-child(3) svg { animation-delay: -4s; }
+@keyframes oe-drift { from { transform: translate(-3%, -2%) rotate(-4deg); } to { transform: translate(3%, 2%) rotate(4deg); } }
+[data-motion="off"] .plankton svg { animation: none; }
+.plankton:hover svg, .plankton:focus-visible svg { filter: drop-shadow(0 0 10px #fff); }
+.plankton-name { position: absolute; bottom: -0.1em; background: #121316; color: #fff; border-radius: 999px; padding: 0.2em 0.8em; font-size: 0.85em; font-weight: 800; white-space: nowrap; }
+.plankton-kind { color: #9fe2ee; font-weight: 600; margin-left: 0.3em; }
+.lens-caption { background: rgba(18, 19, 22, 0.9); color: #fff; border-radius: 18px; padding: 0.5em 0.9em; max-width: min(44vw, 30em); text-align: center; }
+.lens-caption p { margin: 0 0 0.3em; }
+.lens-caption .btn { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.35); }
+
 /* ── Real reference photos ───────────────────────────────────────────────── */
 .ref-photo { margin: 0.5em 0 0.7em; }
 .ref-photo-frame { position: relative; border-radius: 12px; overflow: hidden; background: var(--panel-2); border: 2px solid var(--line); }

@@ -9,7 +9,7 @@ import { range, rng } from './util.ts';
 
 // ── Sargassum ────────────────────────────────────────────────────────────────
 
-interface Clump {
+export interface Clump {
   x: number;
   y: number;
   z: number;
@@ -49,10 +49,13 @@ function clumpLayout(): Clump[] {
 }
 
 /** Sargassum: golden-brown branches with small round air bladders that keep it afloat. */
-export function buildSargassum() {
+/**
+ * `cores`: a dense dark mass in each clump. Right for thick mats seen from below over the reef;
+ * a loose raft in open water looks better without it.
+ */
+export function buildSargassum(clumps: Clump[] = clumpLayout(), name = 'sargassum', cores = true) {
   const group = new THREE.Group();
-  group.name = 'sargassum';
-  const clumps = clumpLayout();
+  group.name = name;
   const r = rng(91);
 
   const bladderMat = new THREE.MeshStandardMaterial({ color: '#a9792a', roughness: 0.55, transparent: true });
@@ -94,7 +97,8 @@ export function buildSargassum() {
   }
   const bladders = new THREE.InstancedMesh(bladderGeo, bladderMat, nB);
   const leaves = new THREE.InstancedMesh(leafGeo, leafMat, nL);
-  const cores = new THREE.InstancedMesh(coreGeo, coreMat, clumps.length);
+  const coreMesh = new THREE.InstancedMesh(coreGeo, coreMat, clumps.length);
+  coreMesh.visible = cores;
   const strands = new THREE.InstancedMesh(strandGeo, strandMat, Math.max(1, nS));
 
   const m = new THREE.Matrix4();
@@ -108,7 +112,7 @@ export function buildSargassum() {
   clumps.forEach((c, ci) => {
     // Dense, dark core gives the mat its mass when seen from below.
     m.compose(pos.set(c.x, c.y, c.z), q.setFromEuler(e.set(0, r() * 6, 0)), scl.set(c.r * 0.6, c.r * (c.ground ? 0.8 : 1.1), c.r * 0.55));
-    cores.setMatrixAt(ci, m);
+    coreMesh.setMatrixAt(ci, m);
     const nb = Math.round(c.r * 90);
     for (let i = 0; i < nb; i++) {
       const a = r() * Math.PI * 2;
@@ -146,7 +150,7 @@ export function buildSargassum() {
     }
   });
   strands.count = iS;
-  for (const mesh of [bladders, leaves, cores, strands]) {
+  for (const mesh of [bladders, leaves, coreMesh, strands]) {
     mesh.instanceMatrix.needsUpdate = true;
     mesh.castShadow = true;
     group.add(mesh);

@@ -153,7 +153,7 @@ test('the teacher guide is complete and opens from a link', async ({ page }) => 
   await page.goto('/?presentation=static#guide');
   const guide = page.locator('#guide');
   await expect(guide).toBeVisible();
-  for (const heading of ['Before class', 'Lesson sequence', 'Can you find…? (great for TK–2)', 'The Changing Reef', 'Grades 3–6 sequence', 'Little Explorers (TK–2) sequence', 'Vocabulary', 'Answers', 'Organisms and relationships', 'Accessibility and classroom controls', 'Transcript', 'Sources and credits']) {
+  for (const heading of ['Before class', 'Lesson sequence', 'Can you find…? (great for TK–2)', 'The Changing Reef', 'Plankton to Whale Sharks', 'Animals in the open water', 'Vocabulary', 'Answers', 'Organisms and relationships', 'Accessibility and classroom controls', 'Transcript', 'Sources and credits']) {
     await expect(guide.getByRole('heading', { name: heading, exact: true })).toBeVisible();
   }
   await expect(guide).toContainText('Links an action, a habitat feature and an organism’s need');
@@ -372,7 +372,9 @@ test('in 3D, the sargassum mats and trash appear only in Expedition 2', async ({
 test('home: the reef shows beside the lessons, the panel hides, and tapping an animal dives into Explore', async ({ page }) => {
   await page.goto('/?presentation=static');
   await expect(page.locator('.home-panel')).toBeVisible();
-  await expect(page.locator('.phase.is-soon')).toContainText('Coming soon');
+  // Phase 2, the open ocean, is live alongside Belize.
+  await expect(page.locator('.home-panel')).toContainText('The Open Ocean');
+  await expect(page.getByRole('button', { name: 'Plankton to Whale Sharks: Grades 3–6' })).toBeVisible();
   // Hide the lessons: the whole reef is free, one button brings them back.
   await press(page, 'Hide lessons and show the whole reef');
   await expect(page.locator('.home-panel')).toHaveCount(0);
@@ -396,4 +398,87 @@ test('inside The Codex there is one header: ours steps aside and its tools sit o
   await app.getByRole('button', { name: 'Start lesson' }).click();
   await expect(app.locator('.step-eyebrow')).toHaveText('Step 1 · Briefing');
   await expect(app.getByRole('button', { name: 'Save & exit' })).toHaveCount(0);
+});
+
+test('Expedition 3 (Grades 3–6): magnifier, food chain in order, prediction before the spawning test, recap', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Plankton to Whale Sharks: Grades 3–6');
+  await expect(page.locator('.step-indicator')).toHaveText('Expedition 3 · Step 1 of 6: Briefing');
+  await expect(page.locator('.instruction')).toHaveText('How does the smallest life feed the biggest fish?');
+  await page.keyboard.press('n');
+  // Into the blue: the magnifier shows the plankton; the animals can be met from the list too.
+  await press(page, 'Look through the magnifier');
+  for (const name of ['Diatom', 'Dinoflagellate', 'Copepod']) await page.getByRole('button', { name, exact: true }).click();
+  await expect(page.locator('#caption')).toContainText('copepod');
+  await expect(dock(page)).toContainText('3 of 3 tiny things seen');
+  await press(page, 'Close the magnifier');
+  await expect(page.locator('.magnifier')).toHaveCount(0);
+  await dock(page).getByRole('button', { name: 'Whale shark', exact: true }).click();
+  await press(page, '3. Gladden Spit');
+  await expect(page.locator('.hotspot')).toHaveCount(1);
+  await dock(page).getByRole('button', { name: 'Cubera snapper', exact: true }).click();
+  await expect(dock(page)).toContainText('Met 2 animals');
+  await page.keyboard.press('n');
+  // Food chain: only the right next link is accepted.
+  await press(page, 'Mahi-mahi');
+  await expect(dock(page).locator('.feedback.retry')).toContainText('doesn’t eat sunlight');
+  for (const name of ['Phytoplankton', 'Zooplankton', 'Small fish', 'Mahi-mahi']) await press(page, name);
+  await expect(dock(page)).toContainText('skips the middle of the chain');
+  await page.keyboard.press('n');
+  // Spawning moon: the test opens only after a prediction.
+  await expect(dock(page).getByRole('button', { name: 'Snappers spawning' })).toHaveCount(0);
+  await expect(dock(page).getByRole('button', { name: 'Record class prediction' })).toBeDisabled();
+  await press(page, 'When the water is warmest');
+  await press(page, 'Record class prediction');
+  await press(page, 'Snappers spawning');
+  await expect(dock(page)).toContainText('April and May, around the full moon');
+  await page.keyboard.press('n');
+  await press(page, 'Phytoplankton, which use sunlight to make food');
+  await press(page, 'Submit answer');
+  await expect(dock(page).locator('.feedback.good')).toBeVisible();
+  await page.keyboard.press('n');
+  await expect(dock(page)).toContainText('half of the oxygen');
+  await expect(dock(page).locator('.recap-completed')).toContainText('Food chain');
+  await expect(dock(page).locator('.recap-completed')).toContainText('Spawning moon');
+  await expect(dock(page).locator('.recap-skipped')).toContainText('question 2');
+});
+
+test('Expedition 3 (Little Explorers): tiny things, feeding the whale shark, the seaweed raft hunt', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Plankton to Whale Sharks: Little Explorers (TK–2)');
+  await expect(page.locator('.step-indicator')).toHaveText('Little Explorers · Step 1 of 5: Story');
+  await page.keyboard.press('n');
+  // The magnifier opens by itself for the tiny things.
+  await expect(page.locator('.magnifier')).toBeVisible();
+  for (const name of ['Diatom', 'Dinoflagellate', 'Copepod']) await page.getByRole('button', { name, exact: true }).click();
+  await expect(dock(page)).toContainText('You found them all');
+  await page.keyboard.press('n');
+  // Every tap gets an answer; only real food counts.
+  await dock(page).getByRole('button', { name: /Plastic bottle/ }).click();
+  await expect(dock(page).locator('.feedback.retry')).toContainText('Plastic is not food');
+  await dock(page).getByRole('button', { name: /Tiny plankton/ }).click();
+  await dock(page).getByRole('button', { name: /Snapper eggs/ }).click();
+  await expect(dock(page).locator('.feedback.good')).toContainText('snapper eggs');
+  await page.keyboard.press('n');
+  // The raft hunt: no names on the picture, so the picture is the puzzle.
+  await expect(page.locator('.hotspot.is-blank')).toHaveCount(4);
+  for (const id of ['young-turtle', 'young-fish', 'mahi-mahi']) await page.locator(`[data-organism="${id}"]`).click();
+  await expect(dock(page)).toContainText('You found everyone');
+  await page.keyboard.press('n');
+  await expect(dock(page)).toContainText('fed the whale shark, and found 3 animals');
+  await page.reload();
+  await expect(page.getByRole('button', { name: /^Resume Plankton to Whale Sharks \(step 5/ })).toBeVisible();
+});
+
+test('in 3D, Expedition 3 swims out to open water and on to Gladden Spit', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#loading')).toBeHidden({ timeout: 30_000 });
+  await press(page, 'Plankton to Whale Sharks: Grades 3–6');
+  await expect(page.locator('#stage canvas')).toHaveAttribute('data-view', 'blue');
+  await dock(page).locator('.stepper').getByRole('button', { name: /4\. Spawning moon/ }).click();
+  await expect(page.locator('#stage canvas')).toHaveAttribute('data-view', 'spit');
+  await press(page, 'When the snappers spawn and release clouds of eggs');
+  await press(page, 'Record class prediction');
+  await press(page, 'Snappers spawning');
+  await expect(page.locator('#caption')).toContainText('Gladden Spit');
 });

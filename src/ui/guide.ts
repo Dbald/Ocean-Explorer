@@ -19,9 +19,27 @@ import {
   olderSteps,
   reefEffects,
   sargassumTwist,
-  type ChangingStep,
 } from '../content/changing.ts';
 import { findables } from '../content/findables.ts';
+import {
+  OCEAN_OBJECTIVE,
+  OCEAN_QUESTION,
+  OCEAN_TITLE,
+  chainLinks,
+  chainTwist,
+  feedItems,
+  littleOceanSteps,
+  oceanActions,
+  oceanAnimals,
+  oceanExitBase,
+  oceanExitGladden,
+  oceanRecords,
+  olderOceanSteps,
+  oxygenFact,
+  plankton,
+  spawnReveal,
+  whaleSharkStatus,
+} from '../content/openOcean.ts';
 import { foodRelationships, shelterRelationships } from '../content/food.ts';
 import { habitatById } from '../content/habitats.ts';
 import {
@@ -120,6 +138,8 @@ export function renderGuide(availableVideos: string[]) {
     </section>
 
     ${renderChangingGuide()}
+
+    ${renderOceanGuide()}
 
     <section>
       <h2>Vocabulary</h2>
@@ -231,7 +251,7 @@ export function renderGuide(availableVideos: string[]) {
   </article>`;
 }
 
-function sequenceTable(list: ChangingStep[]) {
+function sequenceTable(list: { label: string; time: string; instruction: string; teacherNotes: string[]; prompts: string[] }[]) {
   return `<table>
     <thead><tr><th scope="col">Time</th><th scope="col">Step</th><th scope="col">What students do</th><th scope="col">Teacher notes and prompts</th></tr></thead>
     <tbody>${list
@@ -282,19 +302,63 @@ function renderChangingGuide() {
     </section>`;
 }
 
+/** Expedition 3 — Plankton to Whale Sharks: both levels, the science and the answers. */
+function renderOceanGuide() {
+  const draft = oceanRecords.some((r) => r.review.status !== 'reviewed');
+  const answer = (q: typeof oceanExitBase) => `${esc(q.prompt)} Answer: <strong>${esc(q.options.find((o) => o.correct)!.label)}</strong>. ${esc(q.explanation)}`;
+  return `<section class="guide-expedition">
+      <p class="eyebrow">Phase 2 · Expedition 3</p>
+      <h2>${esc(OCEAN_TITLE)}</h2>
+      <p class="lead"><strong>Objective:</strong> ${esc(OCEAN_OBJECTIVE)}</p>
+      <p><strong>Guiding question:</strong> ${esc(OCEAN_QUESTION)}</p>
+      <p><strong>Two levels.</strong> <em>Grades 3–6</em> swims into open water, looks at plankton through a magnifier, builds a food chain, and tests a prediction about whale sharks at Gladden Spit. <em>Little Explorers (TK–2)</em> looks at plankton, feeds the whale shark, and finds who hides in a seaweed raft. About 10 minutes each.</p>
+      ${draft ? '<p class="notice"><strong>Content status:</strong> draft. These facts are sourced but still need scientific review before public release.</p>' : ''}
+      <h3>The science, in brief</h3>
+      <ul>
+        <li><strong>Plankton.</strong> ${plankton.map((p) => esc(p.line)).join(' ')}</li>
+        <li><strong>The food chain.</strong> Sunlight → ${chainLinks.map((l) => `${esc(l.title)} (${esc(l.note)})`).join(' → ')}. Each arrow means “is eaten by”.</li>
+        <li><strong>The twist.</strong> ${esc(chainTwist.text)}</li>
+        <li><strong>Gladden Spit.</strong> ${esc(spawnReveal.explanation)} The on/off model in the app is labelled <em>Simplified example</em>: it shows the idea, not real numbers of sharks.</li>
+        <li><strong>${esc(oxygenFact.title)}</strong> ${esc(oxygenFact.text)}</li>
+        <li><strong>Status.</strong> ${esc(whaleSharkStatus.text)}</li>
+      </ul>
+      <p class="small">The plankton are drawn much bigger than life, and the animals are illustrations. Gladden Spit is a real place on Belize’s reef (Gladden Spit and Silk Cayes Marine Reserve).</p>
+      <h3>Grades 3–6 sequence</h3>
+      ${sequenceTable(olderOceanSteps)}
+      <h3>Little Explorers (TK–2) sequence</h3>
+      ${sequenceTable(littleOceanSteps)}
+      <p>Feeding the whale shark: ${feedItems.map((f) => `${esc(f.label)} (${f.food ? 'food' : 'not food'})`).join(' · ')}.</p>
+      <h3>Animals in the open water</h3>
+      <ul>${oceanAnimals.map((a) => `<li><strong>${esc(a.title)}.</strong> ${esc(a.line)}</li>`).join('')}</ul>
+      <h3>Answers (Grades 3–6)</h3>
+      <ol>
+        <li>${answer(oceanExitBase)}</li>
+        <li>${answer(oceanExitGladden)}</li>
+        <li>${esc(oceanActions.prompt)} Any action connected to plankton, the spawning site or boats counts.
+          <table class="rubric-table"><thead><tr><th scope="col">Score</th><th scope="col">Description</th><th scope="col">Example</th></tr></thead>
+          <tbody>${oceanActions.rubric.map((r) => `<tr><td>${r.score}</td><td>${esc(r.label)}</td><td>${esc(r.example)}</td></tr>`).join('')}</tbody></table></li>
+      </ol>
+    </section>`;
+}
+
 export function renderTranscript(availableVideos: string[]) {
   const stepText = steps.map((s) => `<h4>${esc(s.label)}</h4><p>${esc(narrationById.get(s.narrationId)?.text ?? '')}</p>`).join('');
   const others = narration
-    .filter((n) => !n.id.startsWith('step-') && !n.id.startsWith('ch-'))
+    .filter((n) => !n.id.startsWith('step-') && !n.id.startsWith('ch-') && !n.id.startsWith('oc-') && !n.id.startsWith('ocl-'))
     .map((n) => `<p>${esc(n.text)}</p>`)
     .join('');
   const changing = narration
     .filter((n) => n.id.startsWith('ch-'))
     .map((n) => `<p>${esc(n.text)}</p>`)
     .join('');
+  const ocean = narration
+    .filter((n) => n.id.startsWith('oc-') || n.id.startsWith('ocl-'))
+    .map((n) => `<p>${esc(n.text)}</p>`)
+    .join('');
   const videos = videoSegments
     .filter((v) => availableVideos.includes(v.id))
     .map((v) => `<p><strong>${esc(v.title)} (video, optional):</strong> ${esc(v.transcript)}</p>`).join('');
   return `<div class="transcript"><h3>Expedition 1: ${esc(LESSON_TITLE)}</h3>${stepText}<h4>Habitats and organisms</h4>${others}${videos ? `<h4>Video segments</h4>${videos}` : ''}
-    <h3>Expedition 2: ${esc(CHANGING_TITLE)}</h3>${changing}</div>`;
+    <h3>Expedition 2: ${esc(CHANGING_TITLE)}</h3>${changing}
+    <h3>Expedition 3: ${esc(OCEAN_TITLE)}</h3>${ocean}</div>`;
 }
