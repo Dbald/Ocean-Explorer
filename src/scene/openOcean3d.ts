@@ -726,7 +726,7 @@ export class OpenOcean {
       const ang = t * 0.25 + ph;
       const rad = (1.4 + Math.abs(o.x)) * (1 - sp * 0.5);
       tmpV.set(sc.x + Math.cos(ang) * rad, sc.y + o.y + sp * (1.2 + Math.sin(t * 0.8 + ph) * 0.6), sc.z + Math.sin(ang) * rad * 0.8 + o.z * 0.3);
-      poseFish(s, i, tmpV, Math.atan2(-Math.cos(ang), -Math.sin(ang)) + Math.PI / 2, sp * 0.5, Math.sin(t * 6 + ph) * 0.35);
+      poseFish(s, i, tmpV, Math.atan2(-Math.cos(ang), -Math.sin(ang)), sp * 0.5, Math.sin(t * 6 + ph) * 0.35);
     }
     s.body.instanceMatrix.needsUpdate = true;
     s.tail.instanceMatrix.needsUpdate = true;
@@ -753,7 +753,7 @@ export class OpenOcean {
       const ph = bt.phases[i];
       const ang = t * 0.6 + ph;
       tmpV.set(ballC.x + Math.cos(ang) * (0.6 + Math.abs(o.x)), ballC.y + o.y, ballC.z + Math.sin(ang) * (0.6 + Math.abs(o.z)));
-      poseFish(bt, i, tmpV, Math.atan2(-Math.cos(ang), -Math.sin(ang)) + Math.PI / 2, 0, Math.sin(t * 12 + ph) * 0.4);
+      poseFish(bt, i, tmpV, Math.atan2(-Math.cos(ang), -Math.sin(ang)), 0, Math.sin(t * 12 + ph) * 0.4);
     }
     bt.body.instanceMatrix.needsUpdate = true;
     bt.tail.instanceMatrix.needsUpdate = true;
