@@ -536,6 +536,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 /* ── Expedition 3: Plankton to Whale Sharks ─────────────────────────────── */
 .chain { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35em; margin: 0.4em 0 0.6em; }
 .chain .arrow { color: var(--food); font-weight: 900; font-size: 1.2em; }
+.chain-link { display: inline-flex; align-items: center; gap: 0.35em; }
 .chain-slot { display: inline-flex; flex-direction: column; justify-content: center; min-width: 4.2em; min-height: 3em; padding: 0.3em 0.6em; border-radius: 16px; border: 2px dashed var(--line); font-size: 0.8em; text-align: center; }
 .chain-slot.is-placed { border: 1.5px solid var(--line-strong); background: var(--panel-2); }
 .chain-slot.is-sun { border: 0; background: #fff3cf; color: #121316; }
@@ -558,7 +559,7 @@ details[open] > summary::before { transform: rotate(90deg); }
 .lens::after { content: ''; position: absolute; inset: 8% 50% 50% 10%; border-radius: 50%; background: rgba(255, 255, 255, 0.25); filter: blur(14px); pointer-events: none; }
 .plankton {
   position: absolute; transform: translate(-50%, -50%);
-  width: 34%; aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; font: inherit;
+  width: 30%; aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; font: inherit;
   border-radius: 50%; display: flex; flex-direction: column; align-items: center;
 }
 .plankton svg { width: 100%; height: 100%; animation: oe-drift 6s ease-in-out infinite alternate; }
@@ -567,8 +568,14 @@ details[open] > summary::before { transform: rotate(90deg); }
 @keyframes oe-drift { from { transform: translate(-3%, -2%) rotate(-4deg); } to { transform: translate(3%, 2%) rotate(4deg); } }
 [data-motion="off"] .plankton svg { animation: none; }
 .plankton:hover svg, .plankton:focus-visible svg { filter: drop-shadow(0 0 10px #fff); }
-.plankton-name { position: absolute; bottom: -0.1em; background: #121316; color: #fff; border-radius: 999px; padding: 0.2em 0.8em; font-size: 0.85em; font-weight: 800; white-space: nowrap; }
-.plankton-kind { color: #9fe2ee; font-weight: 600; margin-left: 0.3em; }
+/* The name sits under the drawing, two short lines, so neighbours never collide. */
+.plankton-name {
+  position: absolute; top: 88%; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; line-height: 1.15;
+  background: #121316; color: #fff; border-radius: 12px; padding: 0.25em 0.7em;
+  font-size: clamp(0.7em, 2.2vh, 0.9em); font-weight: 800; white-space: nowrap; pointer-events: none;
+}
+.plankton-kind { color: #9fe2ee; font-weight: 600; font-size: 0.85em; }
 .lens-caption { background: rgba(18, 19, 22, 0.9); color: #fff; border-radius: 18px; padding: 0.5em 0.9em; max-width: min(44vw, 30em); text-align: center; }
 .lens-caption p { margin: 0 0 0.3em; }
 .lens-caption .btn { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.35); }

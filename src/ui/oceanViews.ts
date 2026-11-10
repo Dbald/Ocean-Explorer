@@ -100,12 +100,13 @@ function chainBody(state: LessonState) {
   const slots = chainLinks
     .map((_, i) => {
       const p = placed[i];
-      return `<span class="arrow" aria-hidden="true">→</span><span class="chain-slot${p ? ' is-placed' : ''}">${p ? `<strong>${esc(p.title)}</strong><span class="small">${esc(p.note)}</span>` : '<span class="muted">?</span>'}</span>`;
+      const arrow = i < chainLinks.length - 1 ? '<span class="arrow" aria-hidden="true">→</span>' : '';
+      return `<span class="chain-link"><span class="chain-slot${p ? ' is-placed' : ''}">${p ? `<strong>${esc(p.title)}</strong><span class="small">${esc(p.note)}</span>` : '<span class="muted">?</span>'}</span>${arrow}</span>`;
     })
     .join('');
   const miss = o.chainMiss ? chainLinkById.get(o.chainMiss) : null;
   return `<div class="chain" role="group" aria-label="Our food chain">
-      <span class="chain-slot is-sun"><strong>☀️ Sunlight</strong></span>${slots}
+      <span class="chain-link"><span class="chain-slot is-sun"><strong>☀️ Sunlight</strong></span><span class="arrow" aria-hidden="true">→</span></span>${slots}
     </div>
     <p class="legend-note small"><span class="arrow" aria-hidden="true">→</span> <span>Arrows mean <strong>energy moves from food to the animal that eats it</strong>.</span></p>
     ${
@@ -348,7 +349,7 @@ const PLANKTON_ART: Record<string, string> = {
 };
 
 /** Where each plankton sits in the lens (percent of the lens). */
-const PLANKTON_SPOT: Record<string, [number, number]> = { diatom: [32, 34], dinoflagellate: [68, 40], copepod: [48, 70] };
+const PLANKTON_SPOT: Record<string, [number, number]> = { diatom: [29, 33], dinoflagellate: [71, 33], copepod: [50, 66] };
 
 export function renderMagnifier(state: LessonState) {
   const o = state.ocean;
@@ -361,7 +362,7 @@ export function renderMagnifier(state: LessonState) {
             const seen = o.seenPlankton.includes(p.id);
             return `<button type="button" class="plankton${seen ? ' is-seen' : ''}" style="left:${x}%;top:${y}%" data-action="oc-plankton" data-arg="${p.id}" data-key="oc-plankton:${p.id}" aria-label="${esc(p.title)}${seen ? ', seen' : ''}">
               <svg viewBox="0 0 200 200" aria-hidden="true">${PLANKTON_ART[p.id]}</svg>
-              ${seen ? `<span class="plankton-name">${esc(p.title)} <span class="plankton-kind">${esc(p.kind)}</span></span>` : ''}
+              ${seen ? `<span class="plankton-name">${esc(p.title)}<span class="plankton-kind">${esc(p.kind)}</span></span>` : ''}
             </button>`;
           })
           .join('')}

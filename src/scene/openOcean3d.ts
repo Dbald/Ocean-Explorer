@@ -252,6 +252,123 @@ export function buildMahi(L = 1.1): MahiRig {
 
 // ── Surface, light and plankton specks ─────────────────────────────────────
 
+/** A tangle of sargassum (stems, serrated leaves, round floats) painted on a raft-shaped mask. */
+function raftTexture() {
+  return paint('raft-mat', 1024, 1024, (ctx, w, h) => {
+    const r = rng(311);
+    const cx = w / 2;
+    const cy = h / 2;
+    const stroke = (col: string, width: number) => {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = width;
+      ctx.lineCap = 'round';
+    };
+    const shades = ['#6e4a12', '#8a5e18', '#a8741f', '#c08a2a', '#7b5414', '#d39b38'];
+    // Branching stems, each with leaves and floats along it.
+    const branch = (x: number, y: number, ang: number, len: number, depth: number) => {
+      let px = x;
+      let py = y;
+      const steps = Math.round(len / 9);
+      stroke(shades[Math.floor(r() * 3)], 3.2 - depth);
+      for (let i = 0; i < steps; i++) {
+        ang += range(r, -0.35, 0.35);
+        const nx = px + Math.cos(ang) * 9;
+        const ny = py + Math.sin(ang) * 9;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(nx, ny);
+        ctx.stroke();
+        if (r() < 0.55) {
+          // A serrated leaf.
+          const la = ang + (r() < 0.5 ? 1 : -1) * range(r, 0.6, 1.2);
+          ctx.save();
+          ctx.translate(nx, ny);
+          ctx.rotate(la);
+          ctx.fillStyle = shades[1 + Math.floor(r() * 5)];
+          ctx.beginPath();
+          ctx.ellipse(11, 0, 12, 3.4, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        if (r() < 0.3) {
+          // A gas-filled float, with a glint of light.
+          const bx = nx + range(r, -6, 6);
+          const by = ny + range(r, -6, 6);
+          const br = range(r, 3.5, 6);
+          ctx.fillStyle = shades[3 + Math.floor(r() * 3)];
+          ctx.beginPath();
+          ctx.arc(bx, by, br, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255, 236, 170, 0.6)';
+          ctx.beginPath();
+          ctx.arc(bx - br * 0.3, by - br * 0.3, br * 0.35, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (depth < 2 && r() < 0.08) branch(nx, ny, ang + range(r, -1.2, 1.2), len * 0.5, depth + 1);
+        px = nx;
+        py = ny;
+      }
+    };
+    for (let i = 0; i < 260; i++) {
+      const a = r() * Math.PI * 2;
+      const d = Math.sqrt(r()) * w * 0.42;
+      branch(cx + Math.cos(a) * d, cy + Math.sin(a) * d, r() * Math.PI * 2, range(r, 60, 160), 0);
+    }
+    // Trim to a ragged raft outline, denser in the middle and thinning to wisps at the edge.
+    ctx.globalCompositeOperation = 'destination-in';
+    const mask = document.createElement('canvas');
+    mask.width = w;
+    mask.height = h;
+    const m = mask.getContext('2d')!;
+    for (let i = 0; i < 14; i++) {
+      const a = r() * Math.PI * 2;
+      const d = Math.sqrt(r()) * w * 0.2;
+      const x = cx + Math.cos(a) * d;
+      const y = cy + Math.sin(a) * d;
+      const rad = range(r, w * 0.14, w * 0.26);
+      const g = m.createRadialGradient(x, y, rad * 0.35, x, y, rad);
+      g.addColorStop(0, 'rgba(0,0,0,1)');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      m.fillStyle = g;
+      m.fillRect(0, 0, w, h);
+    }
+    ctx.drawImage(mask, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+  });
+}
+
+function buildRaftMat(c: THREE.Vector3, low: boolean) {
+  const g = new THREE.Group();
+  const tex = raftTexture();
+  const mat = new THREE.MeshStandardMaterial({
+    map: tex,
+    alphaTest: 0.3,
+    side: THREE.DoubleSide,
+    roughness: 0.8,
+    color: '#ffffff',
+    emissive: '#7a5716',
+    emissiveMap: tex,
+    emissiveIntensity: 0.75,
+  });
+  // Three layers, each turned and gently lumpy, give the mat thickness from below.
+  [
+    [0.12, 0, 1],
+    [-0.08, 2.1, 0.9],
+    [-0.3, 4.2, 0.75],
+  ].forEach(([dy, rot, sc], i) => {
+    const geo = new THREE.PlaneGeometry(8.5 * sc, 7 * sc, low ? 12 : 24, low ? 10 : 20);
+    geo.rotateX(-Math.PI / 2);
+    const p = geo.attributes.position;
+    for (let k = 0; k < p.count; k++) p.setY(k, noise2(p.getX(k) * 0.6 + i * 7, p.getZ(k) * 0.6) * 0.25);
+    geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(c.x, c.y + dy, c.z);
+    mesh.rotation.y = rot;
+    g.add(mesh);
+  });
+  return g;
+}
+
 function buildSurface() {
   // The underside of the sea surface: a bright, rippling skin of light.
   const mat = new THREE.ShaderMaterial({
@@ -267,10 +384,10 @@ function buildSurface() {
         float b = sin(vW.y*1.7 - uTime*0.6 + sin(vW.x*1.1 - uTime*0.4)*1.4);
         float c = pow(max(0.0, 1.0 - abs(a*b)*1.4), 3.0);
         float edge = smoothstep(80.0, 20.0, length(vW - vec2(0.0, 45.0)));
-        vec3 col = mix(vec3(0.24, 0.62, 0.72), vec3(0.78, 0.94, 0.97), c);
+        vec3 col = mix(vec3(0.24, 0.62, 0.72), vec3(0.7, 0.9, 0.95), c);
         // Far away, the surface melts into the blue haze.
         float near = exp(-vD * 0.05);
-        gl_FragColor = vec4(col, (0.25 + 0.4*c) * edge * near * (0.4 + 0.6*uSun));
+        gl_FragColor = vec4(col, (0.2 + 0.3*c) * edge * near * (0.4 + 0.6*uSun));
       }`,
   });
   const m = new THREE.Mesh(new THREE.PlaneGeometry(180, 140, 1, 1), mat);
@@ -326,21 +443,52 @@ function specks(count: number, seed: number, color: string, size: number, box: [
 function dropOffHeight(x: number, z: number) {
   // A shelf on the right that falls away steeply into deep water on the left.
   const shelf = -1.4 + noise2(x * 0.4, z * 0.4) * 0.35 + noise2(x * 1.3, z * 1.3) * 0.1;
-  const wall = smoothstep(20, 25.5, x + noise2(z * 0.3, 2) * 1.2);
-  return shelf * wall + (1 - wall) * Math.max(-22, -16 + (x - 16) * 0.5);
+  const wall = smoothstep(20, 25.5, x + noise2(z * 0.3, 2) * 1.2 + noise2(z * 1.1, 5) * 0.5);
+  // Past the wall the slope keeps falling, deep into the haze, so no cut edge ever shows.
+  const deep = x > 16 ? -16 + (x - 16) * 0.5 : -16 + (x - 16) * 2.2;
+  return shelf * wall + (1 - wall) * Math.max(-45, deep);
+}
+
+/**
+ * Below the lip of the wall, the rock melts into the same deep blue as the water
+ * behind it (the backdrop's own gradient), so the slope never ends in a hard edge.
+ */
+function fadeIntoDeep(mat: THREE.MeshStandardMaterial) {
+  const base = mat.onBeforeCompile.bind(mat);
+  const key = mat.customProgramCacheKey.bind(mat);
+  mat.customProgramCacheKey = () => `${key()}:deep`;
+  mat.onBeforeCompile = (shader, renderer) => {
+    base(shader, renderer);
+    shader.uniforms.uDeepMid = { value: new THREE.Color('#2a9bb0') };
+    shader.uniforms.uDeepBottom = { value: new THREE.Color('#0b4a63') };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('uniform float uTime;', 'uniform float uTime;\nuniform vec3 uDeepMid;\nuniform vec3 uDeepBottom;')
+      .replace(
+        '#include <fog_fragment>',
+        `#include <fog_fragment>
+{
+  vec3 dir = normalize(vOeWorld - cameraPosition);
+  vec3 bg = mix(uDeepMid, uDeepBottom, smoothstep(0.0, -0.4, dir.y));
+  vec3 murk = vec3(dot(bg, vec3(0.3, 0.5, 0.2))) * vec3(0.62, 0.7, 0.5);
+  bg = mix(murk, bg, uSun);
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, bg, smoothstep(-2.0, -9.0, vOeWorld.y));
+}`,
+      );
+  };
+  return mat;
 }
 
 function buildDropOff(tex: ReefTextures, low: boolean) {
   const g = new THREE.Group();
   // Starts just past the open-water view's edge, so the deep wall never shows there.
-  const geo = new THREE.PlaneGeometry(30, 56, low ? 70 : 115, low ? 110 : 180);
+  const geo = new THREE.PlaneGeometry(44, 56, low ? 90 : 150, low ? 110 : 180);
   geo.rotateX(-Math.PI / 2);
-  geo.translate(34, 0, 50);
+  geo.translate(27, 0, 50);
   const p = geo.attributes.position;
   for (let i = 0; i < p.count; i++) p.setY(i, dropOffHeight(p.getX(i), p.getZ(i)));
   geo.computeVertexNormals();
   const mat = new THREE.MeshStandardMaterial({ color: tex.rock ? '#c9c2b4' : '#7a7363', roughness: 0.95, map: tex.rock ?? null, normalMap: tex.rockN ?? null });
-  g.add(new THREE.Mesh(geo, surface(mat, { tiles: 0.6, caustics: 0.18 })));
+  g.add(new THREE.Mesh(geo, fadeIntoDeep(surface(mat, { tiles: 0.6, caustics: 0.18 }))));
   // Coral heads crowd the edge of the shelf.
   const r = rng(73);
   const heads: THREE.BufferGeometry[] = [];
@@ -457,10 +605,10 @@ export class OpenOcean {
     // The sargassum raft at the surface, with who lives under it.
     const rr = rng(107);
     const c = OCEAN.raftCenter;
-    const clumps: Clump[] = Array.from({ length: low ? 12 : 20 }, () => {
+    const clumps: Clump[] = Array.from({ length: low ? 16 : 28 }, () => {
       const a = rr() * Math.PI * 2;
-      const d = Math.sqrt(rr()) * 3;
-      return { x: c.x + Math.cos(a) * d, y: c.y + range(rr, -0.15, 0.1), z: c.z + Math.sin(a) * d * 0.8, r: range(rr, 0.7, 1.3) };
+      const d = Math.sqrt(rr()) * 2.5;
+      return { x: c.x + Math.cos(a) * d, y: c.y + range(rr, -0.2, 0.05), z: c.z + Math.sin(a) * d * 0.8, r: range(rr, 0.8, 1.3) };
     });
     const raft = buildSargassum(clumps, 'sargassum-raft', false);
     raft.setAmount(1);
@@ -472,6 +620,8 @@ export class OpenOcean {
         m.emissiveIntensity = 0.7;
       }
     });
+    // The woven body of the raft: layers of painted tangle that let light through the gaps.
+    raft.group.add(buildRaftMat(c, low));
     this.group.add(raft.group);
     this.tappables.push({ id: 'sargassum-raft', main: raft.group, tap: 2.5 });
 
