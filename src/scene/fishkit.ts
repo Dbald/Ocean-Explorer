@@ -41,7 +41,7 @@ export interface Profile {
 }
 
 /** A body from its side profile, centred on x = 0 with the head toward +x. */
-export function profiledBody(length: number, profile: Profile, opts: { stations?: number; radial?: number; flat?: number } = {}) {
+export function profiledBody(length: number, profile: Profile, opts: { stations?: number; radial?: number; flat?: number; arcUV?: boolean } = {}) {
   const top = curve(profile.top);
   const bottom = curve(profile.bottom);
   const width = curve(profile.width);
@@ -67,7 +67,8 @@ export function profiledBody(length: number, profile: Profile, opts: { stations?
       const sx = Math.sign(co) * Math.pow(Math.abs(co), ex);
       const sy = Math.sign(s) * Math.pow(Math.abs(s), ex);
       pos.push((t - 0.5) * length, c + sy * h, sx * w);
-      uv.push(t, 0.5 + 0.5 * s);
+      // arcUV spaces the skin evenly around the body, so spots on the back stay round.
+      uv.push(t, opts.arcUV ? 1 - Math.abs(a - Math.PI / 2) / Math.PI : 0.5 + 0.5 * s);
     }
   }
   for (let i = 0; i < S; i++)

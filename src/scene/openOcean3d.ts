@@ -30,98 +30,141 @@ export const OCEAN_VIEWS = {
 
 // ── Whale shark ─────────────────────────────────────────────────────────────
 
-/** Broad, flat head with a wide mouth at the very front; deep body; tall crescent tail. */
+/**
+ * Traced from photos: a broad, flat head with a blunt, squared-off snout and the
+ * mouth across its very front; a deep, heavy body, highest under the first dorsal
+ * fin; a slim tail stock; a tall crescent tail. The snout closes, so head-on you
+ * see a wide flat face with a dark slit of a mouth, not an open tube.
+ */
 const WHALE_SHARK: Profile = {
-  top: [[0, 0.012], [0.1, 0.03], [0.35, 0.068], [0.6, 0.085], [0.8, 0.078], [0.93, 0.055], [1, 0.022]],
-  bottom: [[0, -0.012], [0.1, -0.022], [0.35, -0.05], [0.6, -0.066], [0.85, -0.062], [0.97, -0.04], [1, -0.024]],
-  width: [[0, 0.01], [0.3, 0.05], [0.6, 0.082], [0.85, 0.088], [0.97, 0.075], [1, 0.045]],
+  top: [[0, 0.016], [0.08, 0.028], [0.2, 0.05], [0.4, 0.083], [0.55, 0.097], [0.7, 0.096], [0.82, 0.084], [0.9, 0.066], [0.95, 0.05], [0.975, 0.04], [0.99, 0.029], [0.997, 0.017], [1, 0]],
+  bottom: [[0, -0.016], [0.08, -0.024], [0.2, -0.04], [0.4, -0.068], [0.55, -0.082], [0.7, -0.082], [0.82, -0.072], [0.9, -0.056], [0.95, -0.044], [0.975, -0.036], [0.99, -0.026], [0.997, -0.015], [1, 0]],
+  width: [[0, 0.012], [0.08, 0.024], [0.2, 0.044], [0.4, 0.078], [0.6, 0.098], [0.75, 0.108], [0.86, 0.11], [0.92, 0.106], [0.96, 0.096], [0.98, 0.084], [0.99, 0.07], [0.997, 0.045], [1, 0]],
 };
 
-/** Dark blue-grey above with white spots between pale stripes (a checkerboard); white below. */
+/**
+ * Dark blue-grey above, white below. Pale vertical stripes with neat columns of
+ * white spots between them (the checkerboard), three pale ridges along the
+ * side, and smaller, denser spots on the head. Canvas top = the back's midline.
+ */
 const whaleSharkSkin = () =>
-  paint('whale-shark', 1024, 256, (ctx, w, h) => {
+  paint('whale-shark-v2', 2048, 512, (ctx, w, h) => {
     countershade(ctx, w, h, [
-      [0, '#2f4352'],
-      [0.45, '#40586a'],
-      [0.62, '#7d8f9b'],
-      [0.72, '#e4e9ec'],
-      [1, '#f3f5f6'],
+      [0, '#27394a'],
+      [0.4, '#33495b'],
+      [0.6, '#5d7484'],
+      [0.7, '#c9d3da'],
+      [0.78, '#eef1f3'],
+      [1, '#f5f7f8'],
     ]);
     const r = rng(17);
-    // Pale vertical stripes along the body.
-    ctx.strokeStyle = 'rgba(225, 235, 240, 0.55)';
-    ctx.lineWidth = 3;
-    for (let x = 0.06; x < 0.8; x += 0.035) {
+    // The canvas holds more pixels per metre along the body than around it: wider ellipses paint round spots.
+    const spot = (x: number, y: number, rad: number) => {
+      ctx.beginPath();
+      ctx.ellipse(x, y, rad * 1.3, rad, 0, 0, Math.PI * 2);
+      ctx.fill();
+    };
+    const pale = 'rgba(232, 240, 244, 0.9)';
+    // Pale vertical stripes, slightly wavy, from the back down the side.
+    const stripes: number[] = [];
+    for (let x = 0.07; x < 0.8; x += 0.034 + r() * 0.008) stripes.push(x);
+    ctx.strokeStyle = 'rgba(220, 232, 238, 0.7)';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    for (const x of stripes) {
       ctx.beginPath();
       ctx.moveTo(x * w, 0);
-      ctx.lineTo((x + 0.004) * w, 0.62 * h);
+      ctx.quadraticCurveTo((x + 0.004) * w, 0.3 * h, (x - 0.002) * w, 0.66 * h);
       ctx.stroke();
     }
-    // Long ridges along the back and sides.
-    ctx.strokeStyle = 'rgba(210, 222, 230, 0.6)';
-    ctx.lineWidth = 2.5;
-    for (const y of [0.12, 0.26, 0.4]) {
+    // Three ridges running along the back and side.
+    ctx.strokeStyle = 'rgba(205, 218, 226, 0.55)';
+    ctx.lineWidth = 4;
+    for (const y of [0.1, 0.27, 0.45]) {
       ctx.beginPath();
-      ctx.moveTo(0.05 * w, y * h);
-      ctx.quadraticCurveTo(0.45 * w, (y - 0.03) * h, 0.82 * w, (y + 0.02) * h);
+      ctx.moveTo(0.06 * w, (y + 0.02) * h);
+      ctx.quadraticCurveTo(0.45 * w, (y - 0.03) * h, 0.83 * w, (y + 0.01) * h);
       ctx.stroke();
     }
-    // White spots: between the stripes, smaller and closer together on the head.
-    ctx.fillStyle = '#f1f5f7';
-    for (let i = 0; i < 900; i++) {
-      const u = r();
-      const v = r() * 0.6;
-      const head = u > 0.8;
-      const rad = (head ? 1.5 : 2.6) + r() * (head ? 1.2 : 2.2);
+    // Columns of round white spots between the stripes.
+    ctx.fillStyle = pale;
+    for (let k = 0; k < stripes.length - 1; k++) {
+      const mid = ((stripes[k] + stripes[k + 1]) / 2) * w;
+      for (let y = 10 + r() * 12; y < 0.66 * h; y += 24 + r() * 8) spot(mid + range(r, -4, 4), y, range(r, 6, 8.5));
+    }
+    // The head: smaller spots, closer together, no stripes.
+    // They start among the last stripes, so the pattern blends rather than changing at a line.
+    for (let i = 0; i < 650; i++) {
+      const u = 0.775 + Math.pow(r(), 0.8) * 0.22;
+      const v = r() * 0.68;
+      spot(u * w, v * h, range(r, 3.2, 5.5));
+    }
+    // A scatter of spots on the tail stock.
+    for (let i = 0; i < 110; i++) spot(range(r, 0.0, 0.08) * w, r() * 0.6 * h, range(r, 4, 6));
+    // Five gill slits just behind the head.
+    ctx.strokeStyle = 'rgba(22, 32, 42, 0.8)';
+    ctx.lineWidth = 4;
+    for (let i = 0; i < 5; i++) {
+      const x = (0.8 + i * 0.011) * w;
       ctx.beginPath();
-      ctx.arc(u * w, v * h, rad, 0, Math.PI * 2);
+      ctx.moveTo(x, 0.42 * h);
+      ctx.quadraticCurveTo(x - 6, 0.55 * h, x, 0.68 * h);
+      ctx.stroke();
+    }
+    grain(ctx, w, h, 19, 0.1);
+  });
+
+/** The fins carry the same pattern: blue-grey with small white spots. */
+const whaleSharkFinSkin = () =>
+  paint('whale-shark-fin', 256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#3c5264';
+    ctx.fillRect(0, 0, w, h);
+    const r = rng(23);
+    ctx.fillStyle = 'rgba(232, 240, 244, 0.85)';
+    for (let i = 0; i < 140; i++) {
+      ctx.beginPath();
+      ctx.arc(r() * w, r() * h, range(r, 2, 4.5), 0, Math.PI * 2);
       ctx.fill();
     }
-    // Five gill slits behind the head.
-    ctx.strokeStyle = 'rgba(25, 35, 45, 0.75)';
-    ctx.lineWidth = 3;
-    for (let i = 0; i < 5; i++) {
-      const x = (0.79 + i * 0.012) * w;
-      ctx.beginPath();
-      ctx.moveTo(x, 0.38 * h);
-      ctx.quadraticCurveTo(x - 4, 0.5 * h, x, 0.64 * h);
-      ctx.stroke();
-    }
-    grain(ctx, w, h, 19, 0.12);
+    grain(ctx, w, h, 29, 0.12);
   });
 
 export interface SharkRig {
   group: THREE.Group;
   tail: THREE.Object3D;
   mouth: THREE.Mesh;
+  /** The mouth's height when closed; feeding opens it wider. */
+  mouthY: number;
 }
 
 export function buildWhaleShark(L = 7): SharkRig {
   const g = new THREE.Group();
-  g.add(new THREE.Mesh(profiledBody(L, WHALE_SHARK, { stations: 64, radial: 36, flat: 2.6 }), std('#ffffff', { map: whaleSharkSkin(), roughness: 0.6 })));
-  const fin = std('#3a4e5d', { side: THREE.DoubleSide, roughness: 0.6 });
-  // Large first dorsal fin set back on the body, a small second one near the tail.
-  g.add(new THREE.Mesh(outlineFin(L, [[-0.12, 0.07], [0.02, 0.08], [-0.04, 0.13], [-0.1, 0.17], [-0.14, 0.12]], 'up'), fin));
-  g.add(new THREE.Mesh(outlineFin(L, [[-0.33, 0.035], [-0.27, 0.042], [-0.3, 0.065], [-0.335, 0.06]], 'up'), fin));
+  g.add(new THREE.Mesh(profiledBody(L, WHALE_SHARK, { stations: 80, radial: 40, flat: 2.4, arcUV: true }), std('#ffffff', { map: whaleSharkSkin(), roughness: 0.6 })));
+  const fin = std('#ffffff', { side: THREE.DoubleSide, roughness: 0.6, map: whaleSharkFinSkin() });
+  // A large first dorsal fin over the middle of the back, a small second one near the tail.
+  g.add(new THREE.Mesh(outlineFin(L, [[-0.15, 0.074], [0.02, 0.094], [-0.04, 0.17], [-0.1, 0.19], [-0.15, 0.13]], 'up'), fin));
+  g.add(new THREE.Mesh(outlineFin(L, [[-0.33, 0.04], [-0.26, 0.048], [-0.29, 0.08], [-0.335, 0.074]], 'up'), fin));
   for (const s of [1, -1]) {
-    // Long, curved pectoral fins.
-    const pec = new THREE.Mesh(outlineFin(L, [[0, 0], [-0.05, 0.03], [-0.17, 0.09], [-0.21, 0.08], [-0.12, 0.02], [-0.04, -0.01]], 'back'), fin);
-    pec.rotation.x = s * (Math.PI / 2 + 0.4);
-    pec.position.set(L * 0.2, -L * 0.04, s * L * 0.06);
+    // Long pectoral fins that sweep back from under the head.
+    const pec = new THREE.Mesh(outlineFin(L, [[0, 0], [-0.05, 0.04], [-0.17, 0.125], [-0.22, 0.13], [-0.13, 0.03], [-0.04, -0.012]], 'back'), fin);
+    pec.rotation.x = s * (Math.PI / 2 + 0.32);
+    pec.position.set(L * 0.2, -L * 0.055, s * L * 0.085);
     g.add(pec);
   }
-  // The mouth: a wide, dark opening right at the front of the flat head.
-  const mouth = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), std('#141a20', { roughness: 0.9 }));
-  mouth.scale.set(0.06 * L, 0.012 * L, 0.06 * L);
-  mouth.position.set(L * 0.495, -0.008 * L, 0);
+  // The mouth: a wide, dark slit right across the front of the flat snout.
+  const mouthY = 0.0055 * L;
+  const mouth = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 16), std('#10161c', { roughness: 0.9 }));
+  mouth.scale.set(0.016 * L, mouthY, 0.07 * L);
+  mouth.position.set(L * 0.487, -0.006 * L, 0);
   g.add(mouth);
-  eyes(g, L * 0.45, 0.012 * L, 0.066 * L, 0.0055 * L, '#3a3326');
-  // Tall, crescent tail: the upper lobe is longer.
+  // Small eyes set far apart, at the front corners of the head.
+  eyes(g, L * 0.462, 0.004 * L, 0.094 * L, 0.0055 * L, '#3a3326');
+  // Tall crescent tail: the upper lobe longer than the lower.
   const tail = new THREE.Group();
-  tail.add(new THREE.Mesh(outlineFin(L, [[0.02, 0.018], [-0.06, 0.08], [-0.14, 0.17], [-0.12, 0.09], [-0.07, 0.0], [-0.1, -0.08], [-0.06, -0.06], [0.02, -0.018]], 'back'), fin));
+  tail.add(new THREE.Mesh(outlineFin(L, [[0.02, 0.016], [-0.05, 0.09], [-0.12, 0.19], [-0.155, 0.2], [-0.1, 0.09], [-0.06, 0.0], [-0.1, -0.09], [-0.12, -0.105], [-0.06, -0.05], [0.02, -0.016]], 'back'), fin));
   tail.position.x = -L * 0.5;
   g.add(tail);
-  return { group: g, tail, mouth };
+  return { group: g, tail, mouth, mouthY };
 }
 
 // ── Schools (instanced: one draw call for the bodies, one for the tails) ────
@@ -703,7 +746,7 @@ export class OpenOcean {
     this.shark.group.rotation.set(0, Math.atan2(-Math.cos(a) * rz, -Math.sin(a) * rx), Math.sin(this.refuseT * 14) * 0.08);
     this.shark.tail.rotation.y = Math.sin(t * 1.1) * 0.25;
     const gape = Math.max(0.35, Math.min(1, this.feedT));
-    this.shark.mouth.scale.y = 0.012 * 7 * (1 + gape * 2.5);
+    this.shark.mouth.scale.y = this.shark.mouthY * (1 + gape * 2.6);
 
     // Visiting whale sharks: swim in from the deep and circle the egg cloud.
     const sc = OCEAN.spitCenter;
@@ -715,7 +758,7 @@ export class OpenOcean {
       v.group.position.lerpVectors(away, circle, sp);
       v.group.rotation.y = Math.atan2(-Math.cos(b) * 3.5, -Math.sin(b) * 4.5);
       v.tail.rotation.y = Math.sin(t * 1.2 + i) * 0.25;
-      v.mouth.scale.y = 0.012 * 6.4 * (1 + sp * 2.2);
+      v.mouth.scale.y = v.mouthY * (1 + sp * 2.4);
     });
 
     // Snappers: milling over the edge, rising in a column to spawn.
