@@ -20,6 +20,7 @@ function markAllReviewed(c: ContentBundle): ContentBundle {
     findables: r(c.findables),
     changing: r(c.changing),
     ocean: r(c.ocean),
+    deep: r(c.deep),
   };
 }
 

@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import type { HabitatId } from '../content/types.ts';
 import { AmbientLife } from './ambientLife.ts';
 import { OCEAN_VIEWS, OpenOcean } from './openOcean3d.ts';
+import { DEEP_VIEWS, DeepSea, daylightAt } from './deepSea3d.ts';
 import { buildEnvironment, reefLift, terrainHeight, type Environment } from './environment.ts';
 import { buildReefGarden } from './reefGarden.ts';
 import { buildBarracuda, buildConch, buildElkhorn, buildParrotfish, buildSmallFish, buildTurtle, type CoralColony, type FishRig, type TurtleRig } from './organisms.ts';
@@ -35,7 +36,7 @@ const GRAZE_ROCK = { x: -12.95, z: 0.8, radius: 0.3 };
 /** Where the barracuda pauses, side-on to the camera, while its card is open. */
 const BARRACUDA_HOLD = new THREE.Vector3(-15.0, 1.5, -0.6);
 
-export type Viewpoint = HabitatId | 'shelter' | 'blue' | 'raft' | 'spit';
+export type Viewpoint = HabitatId | 'shelter' | 'blue' | 'raft' | 'spit' | 'sunlight' | 'twilight' | 'midnight';
 export type Quality = 'high' | 'low';
 
 interface View {
@@ -50,10 +51,12 @@ const VIEWS: Record<Viewpoint, View> = {
   shelter: { position: new THREE.Vector3(-18.1, 1.5, 4.3), target: new THREE.Vector3(-18.0, 0.6, 0.4) },
   // Expedition 3: out past the reef's front edge, in open water.
   ...OCEAN_VIEWS,
+  // Expedition 4: straight down from the open water, zone by zone.
+  ...DEEP_VIEWS,
 };
 
 /** Open-ocean animals that move as schools or sit in a world-placed group: no squash-and-stretch on tap. */
-const NO_BOUNCE = new Set(['small-fish', 'cubera-snapper', 'young-fish', 'sargassum-raft']);
+const NO_BOUNCE = new Set(['small-fish', 'cubera-snapper', 'young-fish', 'sargassum-raft', 'lanternfish', 'phytoplankton-cloud', 'marine-snow']);
 
 export interface SceneOptions {
   quality: Quality;
@@ -137,6 +140,12 @@ export class ReefScene {
   private life: AmbientLife | null = null;
   /** Expedition 3's open water (hidden until it is needed). */
   private ocean: OpenOcean | null = null;
+  /** Expedition 4: the dive through the zones, and the submarine's lights. */
+  private deep: DeepSea | null = null;
+  private deepOn = false;
+  private deepLights = true;
+  private subLight = new THREE.PointLight('#e6f6ff', 0, 0, 1);
+  private backdrop: { top: THREE.Color; mid: THREE.Color; bottom: THREE.Color; base: [THREE.Color, THREE.Color, THREE.Color] } | null = null;
   private oceanT = 0;
   private oceanTarget = 0;
 
@@ -309,6 +318,64 @@ export class ReefScene {
     const fog = this.scene.fog as THREE.FogExp2;
     fog.color.set('#2b93a8').lerp(new THREE.Color('#14597a'), f);
     fog.density = 0.045 + 0.012 * f;
+  }
+
+  /** Expedition 4's deep column, with its animals registered as tappable. */
+  private buildDeep() {
+    this.deep = new DeepSea(this.opts.quality === 'low');
+    this.scene.add(this.deep.group);
+    for (const t of this.deep.tappables) {
+      if (t.tap && t.main.position.lengthSq() > 0) this.addTapArea(t.main, t.tap, 0);
+      this.register(t.id, t.main, t.others ?? []);
+    }
+    this.scene.add(this.subLight);
+    const bd = this.scene.getObjectByName('backdrop') as THREE.Mesh | undefined;
+    const u = (bd?.material as THREE.ShaderMaterial | undefined)?.uniforms;
+    if (u) this.backdrop = { top: u.top.value, mid: u.mid.value, bottom: u.bottom.value, base: [u.top.value.clone(), u.mid.value.clone(), u.bottom.value.clone()] };
+  }
+
+  /**
+   * Into the deep: the deep column shows, and from then on the water, the
+   * light and the backdrop darken with the camera's depth. Off restores them.
+   */
+  setDeep(on: boolean) {
+    if (on === this.deepOn) return;
+    this.deepOn = on;
+    this.deep?.setVisible(on);
+    if (!on) {
+      this.applyDeep(1);
+      this.subLight.intensity = 0;
+      this.applyOcean(this.oceanT);
+    }
+  }
+
+  /** Our submarine's lights: on, they light up the animals; off, only the animals' own light shows. */
+  setDeepLights(on: boolean) {
+    this.deepLights = on;
+  }
+
+  private applyDeep(light: number) {
+    const fog = this.scene.fog as THREE.FogExp2;
+    const sun = new THREE.Color('#14597a');
+    const dim = new THREE.Color('#082a4a');
+    const dark = new THREE.Color('#010308');
+    if (light > 0.17) fog.color.copy(dim).lerp(sun, (light - 0.17) / 0.83);
+    else fog.color.copy(dark).lerp(dim, Math.pow(light / 0.17, 0.6));
+    fog.density = 0.057 + 0.01 * (1 - light);
+    this.hemiLight.intensity = 1.5 * Math.pow(light, 0.7);
+    this.dirLight.intensity = 2.4 * light;
+    if (this.backdrop) {
+      const [top, mid, bottom] = this.backdrop.base;
+      // The twilight zone keeps a deep blue glow overhead; only the midnight zone goes black.
+      const k = Math.pow(light, 0.45);
+      this.backdrop.top.copy(dark).lerp(top, k);
+      this.backdrop.mid.copy(dark).lerp(mid, k);
+      this.backdrop.bottom.copy(dark).lerp(bottom, k);
+    }
+    // The submarine's lamp matters only where the sunlight has gone.
+    this.subLight.intensity = this.deepLights ? 14 * (1 - light) : 0;
+    this.deep?.setLit(this.deepLights ? 1 : Math.min(1, light * 3));
+    this.subLight.position.copy(this.camera.position);
   }
 
   /** Where the class is in the open water; `closeShark` brings the whale shark near for feeding. */
@@ -492,6 +559,7 @@ export class ReefScene {
     this.buildChanging();
     this.buildGarden();
     this.buildOpenOcean();
+    this.buildDeep();
 
     // Fine skin texture on every animal (the corals, fans and sponges have their own surfaces).
     const surfaces = new Set(['elkhorn-coral', 'brain-coral', 'sea-fan', 'tube-sponge']);
@@ -920,6 +988,10 @@ export class ReefScene {
     if (this.ocean?.group.visible) {
       this.ocean.update(this.time, dt, this.opts.ambientMotion);
       this.ocean.refreshBounds();
+    }
+    if (this.deepOn && this.deep) {
+      this.deep.update(this.time, dt, this.opts.ambientMotion);
+      this.applyDeep(daylightAt(this.camera.position.y));
     }
 
     if (this.hintId) this.ring.scale.setScalar(this.ring.userData.baseScale * (1 + Math.sin(performance.now() / 160) * 0.06));

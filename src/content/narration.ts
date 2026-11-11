@@ -1,5 +1,6 @@
 import { CHANGING_LINES } from './changing.ts';
 import { OCEAN_LINES } from './openOcean.ts';
+import { DEEP_LINES } from './deepOcean.ts';
 import { FIND_LINES, findNarrationId, findables, spotterNarrationId } from './findables.ts';
 import { habitats } from './habitats.ts';
 import { organisms } from './organisms.ts';
@@ -69,5 +70,7 @@ export const narration: NarrationSegment[] = [
   ...Object.entries(CHANGING_LINES).map(([id, text]) => ({ id, text })),
   // Expedition 3: Plankton to Whale Sharks.
   ...Object.entries(OCEAN_LINES).map(([id, text]) => ({ id, text })),
+  // Expedition 4: Into the Deep.
+  ...Object.entries(DEEP_LINES).map(([id, text]) => ({ id, text })),
 ];
 export const narrationById = new Map(narration.map((n) => [n.id, n]));

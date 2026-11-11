@@ -7,6 +7,7 @@ import { habitatById } from '../content/habitats.ts';
 import { findablesAt } from '../content/findables.ts';
 import type { HabitatId } from '../content/types.ts';
 import { oceanAnimalsAt, oceanStops, type OceanStop } from '../content/openOcean.ts';
+import { deepAnimalsAt, zoneById, type DeepZone } from '../content/deepOcean.ts';
 
 /** Hotspot positions as percentages of the illustration (x, y). */
 const HOTSPOTS: Record<string, { x: number; y: number }> = {
@@ -379,6 +380,125 @@ const OCEAN_HOTSPOTS: Record<string, { x: number; y: number }> = {
   'cubera-snapper': { x: 51, y: 50 },
 };
 
+// ── Expedition 4: into the deep ──────────────────────────────────────────
+
+const DEEP_ZONES = new Set(['sunlight', 'twilight', 'midnight']);
+const isDeepZone = (stop: string): stop is DeepZone => DEEP_ZONES.has(stop);
+
+const deepGradient = (id: string, top: string, bottom: string) =>
+  `<defs>
+    <linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bottom}"/></linearGradient>
+    <radialGradient id="glow-blue"><stop offset="0" stop-color="#d9f6ff"/><stop offset="0.3" stop-color="#6fd0ff" stop-opacity="0.8"/><stop offset="1" stop-color="#2a8cff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glow-cyan"><stop offset="0" stop-color="#ffffff"/><stop offset="0.25" stop-color="#9ffcff" stop-opacity="0.9"/><stop offset="1" stop-color="#3fd8ff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="glow-pink"><stop offset="0" stop-color="#ffe0ef"/><stop offset="0.3" stop-color="#ff6eb0" stop-opacity="0.85"/><stop offset="1" stop-color="#ff3d8f" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#${id})"/>`;
+
+const marineSnow = (n: number, opacity: number) =>
+  `<g fill="#dfe8ec" opacity="${opacity}">${Array.from({ length: n }, (_, i) => `<circle cx="${(i * 137) % 1600}" cy="${(i * 211) % 900}" r="${1.2 + (i % 3) * 0.7}"/>`).join('')}</g>`;
+
+const glowDot = (x: number, y: number, r: number, grad = 'glow-blue') => `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#${grad})"/>`;
+
+/** Lanternfish: small and silvery, with rows of blue lights along the belly. */
+const lanternfish = (x: number, y: number, s: number, flip: boolean, body: number) => `
+  <g transform="translate(${x} ${y}) scale(${flip ? -s : s} ${s})">
+    <g opacity="${body}">
+      <path d="M-40 0 L-56 -12 L-52 0 L-56 12 Z" fill="#5d7484"/>
+      <path d="M-42 0 C-30 -14 20 -16 38 -6 C44 0 42 6 36 9 C20 16 -30 12 -42 0 Z" fill="#7d93a1"/>
+      <path d="M-42 0 C-30 -14 20 -16 38 -6 C10 -10 -20 -8 -42 0 Z" fill="#26384a"/>
+      <circle cx="26" cy="-2" r="7" fill="#1a242c"/><circle cx="27" cy="-3" r="2.5" fill="#cfe3ec"/>
+    </g>
+    ${[-28, -18, -8, 2, 12, 22].map((dx) => glowDot(dx, 10, 6)).join('')}
+    ${[-24, -12, 0, 12].map((dx) => glowDot(dx, 3, 4)).join('')}
+  </g>`;
+
+/** Hatchetfish: thin as a blade, a deep belly lined with lights. */
+const hatchetfish = (x: number, y: number, s: number, flip: boolean, body: number) => `
+  <g transform="translate(${x} ${y}) scale(${flip ? -s : s} ${s})">
+    <g opacity="${body}">
+      <path d="M-46 -4 L-60 -16 L-58 0 L-60 14 Z" fill="#c9d4da"/>
+      <path d="M-46 -6 C-30 -16 10 -24 40 -18 C48 -12 48 0 40 8 C20 40 -10 52 -24 40 C-34 28 -42 12 -46 -6 Z" fill="#dfe7ec"/>
+      <path d="M-46 -6 C-30 -16 10 -24 40 -18 C10 -14 -20 -10 -46 -6 Z" fill="#3a4652"/>
+      <circle cx="28" cy="-10" r="9" fill="#1a242c"/><circle cx="29" cy="-12" r="3" fill="#cfe3ec"/>
+    </g>
+    ${[-20, -12, -4, 4, 12, 20, 28].map((dx, i) => glowDot(dx, 40 - Math.abs(dx - 4) * 0.7 - (i === 6 ? 12 : 0), 6)).join('')}
+  </g>`;
+
+/** Anglerfish: round and dark, a huge toothy mouth, and a glowing lure on a rod. */
+const anglerfish = (x: number, y: number, s: number, body: number) => `
+  <g transform="translate(${x} ${y}) scale(${s})">
+    <g opacity="${body}">
+      <path d="M-120 0 L-170 -40 L-160 0 L-170 40 Z" fill="#3a2a27"/>
+      <ellipse cx="0" cy="0" rx="125" ry="95" fill="#3a2a27"/>
+      <path d="M60 -30 C120 -30 140 10 130 50 C100 70 60 60 50 30 Z" fill="#0b0707"/>
+      <g fill="#efe7d6">${[0, 1, 2, 3, 4, 5].map((i) => `<path d="M${70 + i * 11} -24 l5 22 l5 -22z"/><path d="M${66 + i * 11} 52 l5 -22 l5 22z"/>`).join('')}</g>
+      <circle cx="40" cy="-50" r="9" fill="#c7c3a0"/><circle cx="41" cy="-51" r="4" fill="#141010"/>
+      <path d="M10 -90 Q 90 -210 170 -120" stroke="#4a3632" stroke-width="6" fill="none"/>
+    </g>
+    ${glowDot(172, -116, 46, 'glow-cyan')}
+    <circle cx="172" cy="-116" r="10" fill="#e8ffff"/>
+  </g>`;
+
+/** Gulper eel: a whip of a body, an enormous pouch of a mouth, a glowing pink tail tip. */
+const gulperEel = (x: number, y: number, s: number, body: number) => `
+  <g transform="translate(${x} ${y}) scale(${s})">
+    <g opacity="${body}">
+      <path d="M-260 60 C-180 20 -120 90 -40 40 C0 15 30 10 60 0" stroke="#1d171b" stroke-width="10" fill="none" stroke-linecap="round"/>
+      <path d="M40 -10 C90 -40 170 -30 190 0 C170 60 90 90 50 30 Z" fill="#241c22"/>
+      <path d="M60 0 C110 -10 170 -6 188 2" stroke="#4a3a44" stroke-width="3" fill="none"/>
+      <circle cx="150" cy="-14" r="4" fill="#cfcfd6"/>
+    </g>
+    ${glowDot(-262, 62, 30, 'glow-pink')}
+  </g>`;
+
+/** Atolla jelly: a deep-red crown of a bell with a ring of blue lights. */
+const atolla = (x: number, y: number, s: number, body: number) => `
+  <g transform="translate(${x} ${y}) scale(${s})">
+    <g opacity="${body}">
+      <path d="M-70 0 C-70 -50 70 -50 70 0 Z" fill="#7a1220"/>
+      <g stroke="#8a2a32" stroke-width="2">${Array.from({ length: 12 }, (_, i) => `<path d="M${-66 + i * 12} 0 l${(i % 3) - 1} 40" fill="none"/>`).join('')}</g>
+      <path d="M60 0 C80 60 40 120 70 200" stroke="#8a2a32" stroke-width="3" fill="none"/>
+    </g>
+    ${Array.from({ length: 9 }, (_, i) => glowDot(-56 + i * 14, -14 - Math.sin((i / 8) * Math.PI) * 10, i % 3 === 0 ? 16 : 9)).join('')}
+  </g>`;
+
+function deepIllustration(zone: DeepZone, lights: boolean) {
+  // With our lights off, the bodies fade to almost nothing and only the animals' own light shows.
+  const body = lights ? 1 : 0.12;
+  switch (zone) {
+    case 'sunlight':
+      return `${deepWater}
+        <g fill="#a9d86e" opacity="0.85">${Array.from({ length: 140 }, (_, i) => `<circle cx="${380 + ((i * 53) % 300) - 150}" cy="${270 + ((i * 31) % 160) - 80}" r="${2 + (i % 3)}"/>`).join('')}</g>
+        ${whaleShark(930, 520, 1.1, false)}`;
+    case 'twilight':
+      return `${deepGradient('twi', '#123f6a', '#04162b')}
+        <g fill="#7fb4d8" opacity="0.06">${[300, 760, 1180].map((x) => `<path d="M${x} 0 l90 0 l-180 900 l-90 0z"/>`).join('')}</g>
+        ${marineSnow(110, 0.45)}
+        ${Array.from({ length: 12 }, (_, i) => lanternfish(860 + ((i * 97) % 360) - 180, 340 + ((i * 61) % 200) - 100, 1.1, i % 2 === 1, body)).join('')}
+        ${hatchetfish(330, 480, 1.4, false, body)}${hatchetfish(470, 560, 1.2, true, body)}${hatchetfish(250, 620, 1.0, false, body)}`;
+    case 'midnight':
+      return `${deepGradient('mid', '#050b16', '#000000')}
+        ${marineSnow(140, lights ? 0.5 : 0.25)}
+        <g fill="#dfe8ec" opacity="${lights ? 0.8 : 0.4}">${Array.from({ length: 50 }, (_, i) => `<circle cx="${1310 + ((i * 41) % 160) - 80}" cy="${250 + ((i * 29) % 140) - 70}" r="${1.5 + (i % 3)}"/>`).join('')}</g>
+        ${gulperEel(420, 360, 1.3, body)}
+        ${anglerfish(990, 500, 1.2, body)}
+        ${atolla(680, 600, 1.1, body)}
+        ${Array.from({ length: 10 }, (_, i) => glowDot((i * 337) % 1600, (i * 191) % 900, 5)).join('')}`;
+  }
+}
+
+/** Where each deep-sea animal sits in its illustration (percent). */
+const DEEP_HOTSPOTS: Record<string, { x: number; y: number }> = {
+  'phytoplankton-cloud': { x: 24, y: 30 },
+  'diving-whale-shark': { x: 58, y: 58 },
+  lanternfish: { x: 54, y: 38 },
+  hatchetfish: { x: 22, y: 58 },
+  anglerfish: { x: 62, y: 56 },
+  'gulper-eel': { x: 30, y: 40 },
+  'atolla-jelly': { x: 43, y: 64 },
+  'marine-snow': { x: 82, y: 28 },
+};
+
 function illustration(stop: HabitatId, shelterView: 'before' | 'after' | null) {
   const reduced = shelterView === 'after';
   switch (stop) {
@@ -422,7 +542,7 @@ function illustration(stop: HabitatId, shelterView: 'before' | 'after' | null) {
 }
 
 export interface StaticSceneState {
-  stop: HabitatId | OceanStop;
+  stop: HabitatId | OceanStop | DeepZone;
   selected: string | null;
   shelterView: 'before' | 'after' | null;
   /** In the "Can you find…?" game the buttons carry no visible names, so the picture is the puzzle. */
@@ -435,6 +555,8 @@ export interface StaticSceneState {
   discovered?: string[];
   /** Expedition 3: the snappers are spawning at Gladden Spit. */
   spawning?: boolean;
+  /** Expedition 4: our submarine's lights (off shows only the animals' own light). */
+  lights?: boolean;
   /** Expedition 2: thick sargassum overhead. */
   sargassum?: boolean;
   /** Expedition 2: trash still in the water (null = none shown). While trash is shown, the animals' buttons step aside. */
@@ -455,22 +577,27 @@ export class StaticScene {
   }
 
   render(s: StaticSceneState) {
-    const key = `${s.stop}|${s.selected}|${s.shelterView}|${s.labels}|${s.labelsAlways}|${s.discovered?.join(',')}|${s.hint}|${s.sargassum}|${s.litter?.join(',') ?? '-'}|${s.spawning}`;
+    const key = `${s.stop}|${s.selected}|${s.shelterView}|${s.labels}|${s.labelsAlways}|${s.discovered?.join(',')}|${s.hint}|${s.sargassum}|${s.litter?.join(',') ?? '-'}|${s.spawning}|${s.lights}`;
     if (key === this.lastKey) return;
     this.lastKey = key;
     const focused = (document.activeElement as HTMLElement | null)?.dataset?.organism;
     const ocean = isOceanStop(s.stop);
-    const label = ocean ? (oceanStops.find((o) => o.id === s.stop)?.arrival ?? '') : (habitatById.get(s.stop as HabitatId)?.accessibleDescription ?? '');
-    const here: { id: string; title: string }[] = ocean ? oceanAnimalsAt(s.stop as OceanStop) : findablesAt(s.stop as HabitatId);
-    const spots = ocean ? OCEAN_HOTSPOTS : HOTSPOTS;
+    const deep = isDeepZone(s.stop);
+    const label = ocean
+      ? (oceanStops.find((o) => o.id === s.stop)?.arrival ?? '')
+      : deep
+        ? (zoneById.get(s.stop as DeepZone)?.arrival ?? '')
+        : (habitatById.get(s.stop as HabitatId)?.accessibleDescription ?? '');
+    const here: { id: string; title: string }[] = ocean ? oceanAnimalsAt(s.stop as OceanStop) : deep ? deepAnimalsAt(s.stop as DeepZone) : findablesAt(s.stop as HabitatId);
+    const spots = ocean ? OCEAN_HOTSPOTS : deep ? DEEP_HOTSPOTS : HOTSPOTS;
     // While a card is open, zoom in on that organism so the class can see the detail it asks about.
     const focus = s.selected && !s.shelterView ? spots[s.selected] : undefined;
     const zoomed = !!focus && here.some((o) => o.id === s.selected);
     const zoom = zoomed && focus ? ` style="transform: scale(2); transform-origin: ${focus.x}% ${focus.y}%"` : '';
     this.root.innerHTML = `<div class="static-frame">
       <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${label}"${zoom}>
-        ${ocean ? oceanIllustration(s.stop as OceanStop, !!s.spawning) : illustration(s.stop as HabitatId, s.shelterView)}
-        ${s.sargassum && !ocean ? sargassumOverlay(s.stop as HabitatId) : ''}
+        ${ocean ? oceanIllustration(s.stop as OceanStop, !!s.spawning) : deep ? deepIllustration(s.stop as DeepZone, s.lights !== false) : illustration(s.stop as HabitatId, s.shelterView)}
+        ${s.sargassum && !ocean && !deep ? sargassumOverlay(s.stop as HabitatId) : ''}
       </svg>
       ${s.shelterView || zoomed || s.litter ? '' : here
         .map((o) => {

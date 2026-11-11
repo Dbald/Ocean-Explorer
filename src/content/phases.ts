@@ -24,7 +24,7 @@ export const LIVE_PHASE = {
 export const OCEAN_PHASE = {
   number: 2,
   place: 'The Open Ocean',
-  teaser: 'Leave the reef behind for the deep blue: drifting plankton, a huge food web, and the whale sharks that visit Belize each spring.',
+  teaser: 'Leave the reef behind for the deep blue: drifting plankton, the whale sharks that visit Belize each spring, and the glowing animals of the midnight zone.',
 };
 
 /** Phases still to come appear as "Coming soon" cards. Add one here and it shows on the home screen. */

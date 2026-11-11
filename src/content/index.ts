@@ -6,6 +6,7 @@ import { habitats } from './habitats.ts';
 import { connectItems, exitQuestions, steps } from './lesson.ts';
 import { narration } from './narration.ts';
 import { littleOceanSteps, oceanRecords, olderOceanSteps } from './openOcean.ts';
+import { deepRecords, littleDeepSteps, olderDeepSteps } from './deepOcean.ts';
 import { organisms } from './organisms.ts';
 import { sources } from './sources.ts';
 import type { ContentBundle } from './validate.ts';
@@ -24,6 +25,7 @@ export const content: ContentBundle = {
   findables,
   changing: changingRecords,
   ocean: oceanRecords,
+  deep: deepRecords,
   stepNarrationIds: [
     ...steps.map((s) => s.narrationId),
     ...olderSteps.map((s) => s.narrationId),
@@ -31,5 +33,7 @@ export const content: ContentBundle = {
     ...beltSnapshots.map((b) => b.narrationId),
     ...olderOceanSteps.map((s) => s.narrationId),
     ...littleOceanSteps.map((s) => s.narrationId),
+    ...olderDeepSteps.map((s) => s.narrationId),
+    ...littleDeepSteps.map((s) => s.narrationId),
   ],
 };

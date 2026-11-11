@@ -40,6 +40,25 @@ import {
   spawnReveal,
   whaleSharkStatus,
 } from '../content/openOcean.ts';
+import {
+  DEEP_OBJECTIVE,
+  DEEP_QUESTION,
+  DEEP_TITLE,
+  deepActions,
+  deepAnimals,
+  deepExitLight,
+  deepExitLure,
+  deepRecords,
+  glowReveal,
+  littleDeepSteps,
+  marineSnowFact,
+  migrationTwist,
+  olderDeepSteps,
+  pressureFact,
+  zoneClues,
+  zoneById,
+  zones,
+} from '../content/deepOcean.ts';
 import { foodRelationships, shelterRelationships } from '../content/food.ts';
 import { habitatById } from '../content/habitats.ts';
 import {
@@ -140,6 +159,7 @@ export function renderGuide(availableVideos: string[]) {
     ${renderChangingGuide()}
 
     ${renderOceanGuide()}
+    ${renderDeepGuide()}
 
     <section>
       <h2>Vocabulary</h2>
@@ -341,10 +361,48 @@ function renderOceanGuide() {
     </section>`;
 }
 
+/** Expedition 4 — Into the Deep: both levels, the science and the answers. */
+function renderDeepGuide() {
+  const draft = deepRecords.some((r) => r.review.status !== 'reviewed');
+  const answer = (q: typeof deepExitLight) => `${esc(q.prompt)} Answer: <strong>${esc(q.options.find((o) => o.correct)!.label)}</strong>. ${esc(q.explanation)}`;
+  return `<section class="guide-expedition">
+      <p class="eyebrow">Phase 2 · Expedition 4</p>
+      <h2>${esc(DEEP_TITLE)}</h2>
+      <p class="lead"><strong>Objective:</strong> ${esc(DEEP_OBJECTIVE)}</p>
+      <p><strong>Guiding question:</strong> ${esc(DEEP_QUESTION)}</p>
+      <p><strong>Two levels.</strong> <em>Grades 3–6</em> dives through the three zones with a depth gauge, sorts zone clues, and tests a prediction about why deep-sea animals make light by switching off the submarine’s lights. <em>Little Explorers (TK–2)</em> dives zone by zone, meets one animal in each, then turns off the lights to find the animals that glow. About 10 minutes for Grades 3–6, 7 for Little Explorers.</p>
+      ${draft ? '<p class="notice"><strong>Content status:</strong> draft. These facts are sourced but still need scientific review before public release.</p>' : ''}
+      <h3>The science, in brief</h3>
+      <ul>
+        ${zones.map((z) => `<li><strong>${esc(z.title)} (${esc(z.depth)}).</strong> ${esc(z.light)} ${esc(z.cold)} Pressure: ${esc(z.pressure.toLowerCase())}</li>`).join('')}
+        <li><strong>Pressure.</strong> ${esc(pressureFact.text)}</li>
+        <li><strong>The twist.</strong> ${esc(migrationTwist.text)}</li>
+        <li><strong>Animal light.</strong> ${esc(glowReveal.explanation)} The lights switch in the app is labelled <em>Simplified example</em>.</li>
+        <li><strong>${esc(marineSnowFact.title)}</strong> ${esc(marineSnowFact.text)}</li>
+      </ul>
+      <p class="small">The scene is not to scale: the zones are drawn tens of meters apart, not hundreds, and the animals are shown bigger than life.</p>
+      <h3>Grades 3–6 sequence</h3>
+      ${sequenceTable(olderDeepSteps)}
+      <p>Zone clues: ${zoneClues.map((c) => `“${esc(c.text)}” (${esc(zoneById.get(c.zone)!.title.toLowerCase())})`).join(' · ')}.</p>
+      <h3>Little Explorers (TK–2) sequence</h3>
+      ${sequenceTable(littleDeepSteps)}
+      <h3>Animals of the deep</h3>
+      <ul>${deepAnimals.map((a) => `<li><strong>${esc(a.title)}</strong> (${esc(zoneById.get(a.zone)!.title.toLowerCase())}${a.glows ? ', makes its own light' : ''}). ${esc(a.line)}</li>`).join('')}</ul>
+      <h3>Answers (Grades 3–6)</h3>
+      <ol>
+        <li>${answer(deepExitLight)}</li>
+        <li>${answer(deepExitLure)}</li>
+        <li>${esc(deepActions.prompt)} Any feature counts if it is linked to a challenge of the deep: dark, cold, pressure or little food.
+          <table class="rubric-table"><thead><tr><th scope="col">Score</th><th scope="col">Description</th><th scope="col">Example</th></tr></thead>
+          <tbody>${deepActions.rubric.map((r) => `<tr><td>${r.score}</td><td>${esc(r.label)}</td><td>${esc(r.example)}</td></tr>`).join('')}</tbody></table></li>
+      </ol>
+    </section>`;
+}
+
 export function renderTranscript(availableVideos: string[]) {
   const stepText = steps.map((s) => `<h4>${esc(s.label)}</h4><p>${esc(narrationById.get(s.narrationId)?.text ?? '')}</p>`).join('');
   const others = narration
-    .filter((n) => !n.id.startsWith('step-') && !n.id.startsWith('ch-') && !n.id.startsWith('oc-') && !n.id.startsWith('ocl-'))
+    .filter((n) => !n.id.startsWith('step-') && !n.id.startsWith('ch-') && !n.id.startsWith('oc-') && !n.id.startsWith('ocl-') && !n.id.startsWith('dz-') && !n.id.startsWith('dzl-'))
     .map((n) => `<p>${esc(n.text)}</p>`)
     .join('');
   const changing = narration
@@ -355,10 +413,15 @@ export function renderTranscript(availableVideos: string[]) {
     .filter((n) => n.id.startsWith('oc-') || n.id.startsWith('ocl-'))
     .map((n) => `<p>${esc(n.text)}</p>`)
     .join('');
+  const deep = narration
+    .filter((n) => n.id.startsWith('dz-') || n.id.startsWith('dzl-'))
+    .map((n) => `<p>${esc(n.text)}</p>`)
+    .join('');
   const videos = videoSegments
     .filter((v) => availableVideos.includes(v.id))
     .map((v) => `<p><strong>${esc(v.title)} (video, optional):</strong> ${esc(v.transcript)}</p>`).join('');
   return `<div class="transcript"><h3>Expedition 1: ${esc(LESSON_TITLE)}</h3>${stepText}<h4>Habitats and organisms</h4>${others}${videos ? `<h4>Video segments</h4>${videos}` : ''}
     <h3>Expedition 2: ${esc(CHANGING_TITLE)}</h3>${changing}
-    <h3>Expedition 3: ${esc(OCEAN_TITLE)}</h3>${ocean}</div>`;
+    <h3>Expedition 3: ${esc(OCEAN_TITLE)}</h3>${ocean}
+    <h3>Expedition 4: ${esc(DEEP_TITLE)}</h3>${deep}</div>`;
 }

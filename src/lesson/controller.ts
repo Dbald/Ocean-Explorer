@@ -18,10 +18,22 @@ import {
   type OceanLevel,
   type OceanStop,
 } from '../content/openOcean.ts';
+import {
+  deepActions,
+  deepAnimalById,
+  deepChoiceItems,
+  deepStepsFor,
+  glowFinds,
+  zoneClueById,
+  zoneClues,
+  zoneOrder,
+  type DeepLevel,
+  type DeepZone,
+} from '../content/deepOcean.ts';
 import { organismById, organisms } from '../content/organisms.ts';
 import type { FoodChoiceItem, HabitatId, StepId } from '../content/types.ts';
 
-export type Mode = 'lesson' | 'explore' | 'find' | 'changing' | 'ocean';
+export type Mode = 'lesson' | 'explore' | 'find' | 'changing' | 'ocean' | 'deep';
 export type ActivityStatus = 'completed' | 'attempted' | 'skipped';
 
 export interface ChoiceState {
@@ -53,6 +65,33 @@ export interface LessonState {
   changing: ChangingState;
   /** Expedition 3: Plankton to Whale Sharks. */
   ocean: OceanState;
+  /** Expedition 4: Into the Deep. */
+  deep: DeepState;
+}
+
+export interface DeepState {
+  level: DeepLevel;
+  step: number;
+  /** The zone the class is in now. */
+  zone: DeepZone;
+  visited: DeepZone[];
+  /** Deep-sea animals the class has tapped. */
+  met: string[];
+  /** Zone clues placed correctly, by clue id. */
+  sorted: Record<string, DeepZone>;
+  /** The last wrong placement, for a hint. Cleared by a right one. */
+  sortMiss: { clue: string; zone: DeepZone } | null;
+  prediction: string | null;
+  revealed: boolean;
+  /** Our lights: on shows the animals' bodies, off shows only their own light. */
+  lights: boolean;
+  sawDark: boolean;
+  /** Little Explorers: glowing animals found with the lights off. */
+  found: string[];
+  exitIndex: number;
+  action: string | null;
+  actionScore: number | null;
+  actionDiscussed: boolean;
 }
 
 export interface OceanState {
@@ -166,7 +205,21 @@ export type Action =
   | { type: 'ocExitIndex'; index: number }
   | { type: 'ocAction'; id: string }
   | { type: 'ocScore'; score: number | null }
-  | { type: 'ocDiscussed' };
+  | { type: 'ocDiscussed' }
+  | { type: 'startDeep'; level: DeepLevel }
+  | { type: 'dzGoto'; step: number }
+  | { type: 'dzZone'; zone: DeepZone }
+  | { type: 'dzDeeper' }
+  | { type: 'dzMeet'; id: string }
+  | { type: 'dzSort'; clue: string; zone: DeepZone }
+  | { type: 'dzPredict'; option: string }
+  | { type: 'dzReveal' }
+  | { type: 'dzLights'; on: boolean }
+  | { type: 'dzFind'; id: string }
+  | { type: 'dzExitIndex'; index: number }
+  | { type: 'dzAction'; id: string }
+  | { type: 'dzScore'; score: number | null }
+  | { type: 'dzDiscussed' };
 
 export const FEATURED_COUNT = organisms.length;
 
@@ -215,7 +268,90 @@ export function initialOcean(level: OceanLevel): OceanState {
   };
 }
 
-const addOnce = (list: string[], id: string) => (list.includes(id) ? list : [...list, id]);
+const addOnce = <T,>(list: T[], id: T) => (list.includes(id) ? list : [...list, id]);
+
+export function initialDeep(level: DeepLevel): DeepState {
+  return {
+    level,
+    step: 0,
+    zone: 'sunlight',
+    visited: ['sunlight'],
+    met: [],
+    sorted: {},
+    sortMiss: null,
+    prediction: null,
+    revealed: false,
+    lights: true,
+    sawDark: false,
+    found: [],
+    exitIndex: 0,
+    action: null,
+    actionScore: null,
+    actionDiscussed: false,
+  };
+}
+
+/** The zone each step happens in, when the step decides it (otherwise the class chooses). */
+export function deepZoneForStep(level: DeepLevel, step: number): DeepZone | null {
+  const kind = deepStepsFor(level)[step]?.kind;
+  if (kind === 'glow') return 'midnight';
+  if (kind === 'briefing' && step === 0) return 'sunlight';
+  return null;
+}
+
+/** Expedition 4 actions. Pure, like the rest of the reducer. */
+function reduceDeep(state: LessonState, action: Action): LessonState {
+  const d = state.deep;
+  const set = (patch: Partial<DeepState>): LessonState => ({ ...state, deep: { ...d, ...patch } });
+  const goZone = (zone: DeepZone) => set({ zone, visited: addOnce(d.visited, zone) });
+  switch (action.type) {
+    case 'dzGoto': {
+      const max = deepStepsFor(d.level).length - 1;
+      const step = clamp(action.step, 0, max);
+      const zone = deepZoneForStep(d.level, step) ?? d.zone;
+      // Leaving the lights-out step turns our lights back on.
+      return { ...state, selectedOrganism: null, deep: { ...d, step, zone, visited: addOnce(d.visited, zone), sortMiss: null, lights: true } };
+    }
+    case 'dzZone':
+      return zoneOrder.includes(action.zone) ? goZone(action.zone) : state;
+    case 'dzDeeper': {
+      const next = zoneOrder[zoneOrder.indexOf(d.zone) + 1];
+      return next ? goZone(next) : state;
+    }
+    case 'dzMeet': {
+      const a = deepAnimalById.get(action.id);
+      return a ? set({ met: addOnce(d.met, a.id) }) : state;
+    }
+    case 'dzSort': {
+      const clue = zoneClueById.get(action.clue);
+      if (!clue || d.sorted[clue.id]) return state;
+      return clue.zone === action.zone
+        ? set({ sorted: { ...d.sorted, [clue.id]: action.zone }, sortMiss: null })
+        : set({ sortMiss: { clue: clue.id, zone: action.zone } });
+    }
+    case 'dzPredict':
+      return d.revealed ? state : set({ prediction: action.option });
+    case 'dzReveal':
+      return d.prediction === null ? state : set({ revealed: true });
+    case 'dzLights': {
+      // Older classes predict first; the little ones go straight to the lights.
+      if (d.level === 'older' && !d.revealed) return state;
+      return set({ lights: action.on, sawDark: d.sawDark || !action.on });
+    }
+    case 'dzFind':
+      return glowFinds.includes(action.id) && !d.lights ? set({ found: addOnce(d.found, action.id), met: addOnce(d.met, action.id) }) : state;
+    case 'dzExitIndex':
+      return set({ exitIndex: clamp(action.index, 0, 2) });
+    case 'dzAction':
+      return deepActions.choices.some((c) => c.id === action.id) ? set({ action: action.id }) : state;
+    case 'dzScore':
+      return set({ actionScore: action.score });
+    case 'dzDiscussed':
+      return d.action === null ? state : set({ actionDiscussed: true });
+    default:
+      return state;
+  }
+}
 
 /** Expedition 3 actions. Pure, like the rest of the reducer. */
 function reduceOcean(state: LessonState, action: Action): LessonState {
@@ -282,6 +418,7 @@ export function initialState(): LessonState {
     find: { order: [], index: 0, found: [], lastTap: null },
     changing: initialChanging('older'),
     ocean: initialOcean('older'),
+    deep: initialDeep('older'),
   };
 }
 
@@ -293,6 +430,7 @@ const choiceItems = new Map<string, FoodChoiceItem>([
   ...exitQuestions.flatMap((q) => (q.kind === 'food-choice' ? [[q.item.id, q.item] as const] : [])),
   ...changingChoiceItems.map((i) => [i.id, i] as const),
   ...oceanChoiceItems.map((i) => [i.id, i] as const),
+  ...deepChoiceItems.map((i) => [i.id, i] as const),
 ]);
 
 /** The shelter-reasoning exit question accepts any plausible, qualified answer. */
@@ -382,6 +520,22 @@ export function reduce(state: LessonState, action: Action): LessonState {
     case 'ocScore':
     case 'ocDiscussed':
       return state.mode === 'ocean' ? reduceOcean(state, action) : state;
+    case 'startDeep':
+      return { ...initialState(), mode: 'deep', deep: initialDeep(action.level) };
+    case 'dzGoto':
+    case 'dzZone':
+    case 'dzDeeper':
+    case 'dzMeet':
+    case 'dzSort':
+    case 'dzPredict':
+    case 'dzReveal':
+    case 'dzLights':
+    case 'dzFind':
+    case 'dzExitIndex':
+    case 'dzAction':
+    case 'dzScore':
+    case 'dzDiscussed':
+      return state.mode === 'deep' ? reduceDeep(state, action) : state;
     case 'startChanging':
       return { ...initialState(), mode: 'changing', stop: 'reef', visitedStops: ['reef'], changing: initialChanging(action.level) };
     case 'chGoto': {
@@ -615,6 +769,32 @@ export function oceanSummary(state: LessonState): ActivitySummary[] {
   ];
 }
 
+/** Expedition 4 recap: completed, attempted or skipped — never completed just by moving past. */
+export function deepSummary(state: LessonState): ActivitySummary[] {
+  const d = state.deep;
+  const status = (done: boolean, tried: boolean): ActivityStatus => (done ? 'completed' : tried ? 'attempted' : 'skipped');
+  const allZones = zoneOrder.every((z) => d.visited.includes(z));
+  if (d.level === 'little') {
+    return [
+      { id: 'descend', label: `Dive down: ${d.visited.length} of ${zoneOrder.length} zones`, status: status(allZones && d.met.length >= 3, d.visited.length > 1 || d.met.length > 0) },
+      { id: 'glow', label: `Lights out: found ${d.found.length} of ${glowFinds.length} glowing animals`, status: status(d.found.length === glowFinds.length, d.sawDark) },
+    ];
+  }
+  const choiceStatusFor = (id: string) => {
+    const ch = choice(state, id);
+    return status(ch.submitted && ch.correct, ch.tries > 0 || ch.selected !== null);
+  };
+  const nSorted = Object.keys(d.sorted).length;
+  return [
+    { id: 'descend', label: 'Dive down: three zones and their animals', status: status(allZones && d.met.length >= 3, d.visited.length > 1 || d.met.length > 0) },
+    { id: 'sort', label: `Zone clues: ${nSorted} of ${zoneClues.length}`, status: status(nSorted === zoneClues.length, nSorted > 0 || d.sortMiss !== null) },
+    { id: 'glow', label: 'Lights out: prediction and observation', status: status(d.revealed && d.sawDark, d.prediction !== null) },
+    { id: 'dz-exit-light', label: 'Explain: question 1 — no phytoplankton in the midnight zone', status: choiceStatusFor('dz-exit-light') },
+    { id: 'dz-exit-lure', label: 'Explain: question 2 — the anglerfish’s lure', status: choiceStatusFor('dz-exit-lure') },
+    { id: 'dz-exit-action', label: 'Explain: question 3 — how a deep-sea animal survives', status: status(d.action !== null && (d.actionDiscussed || d.actionScore !== null), d.action !== null) },
+  ];
+}
+
 export const CHANGING_ACTION_IDS = changingActions.choices.map((x) => x.id);
 export const CAUSE_IDS = causes.map((x) => x.id);
 
@@ -639,6 +819,7 @@ export function hydrate(raw: unknown): LessonState {
     find: { ...base.find, ...(r.find ?? {}), lastTap: null },
     changing: { ...base.changing, ...(r.changing ?? {}) },
     ocean: { ...base.ocean, ...(r.ocean ?? {}), magnifier: false, chainMiss: null, lastFeed: null },
+    deep: { ...base.deep, ...(r.deep ?? {}), sortMiss: null },
     choices: { ...(r.choices ?? {}) },
     selectedOrganism: null,
   };

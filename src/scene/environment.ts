@@ -86,7 +86,9 @@ function buildBackdrop() {
     fragmentShader:
       'uniform vec3 top; uniform vec3 mid; uniform vec3 bottom; uniform float uSun; varying vec3 vP; void main(){ float h = vP.y; vec3 c = h > 0.0 ? mix(mid, top, smoothstep(0.0, 0.7, h)) : mix(mid, bottom, smoothstep(0.0, -0.4, h)); vec3 murk = vec3(dot(c, vec3(0.3, 0.5, 0.2))) * vec3(0.62, 0.7, 0.5); gl_FragColor = vec4(mix(murk, c, uSun), 1.0); }',
   });
-  return new THREE.Mesh(geo, mat);
+  const m = new THREE.Mesh(geo, mat);
+  m.name = 'backdrop';
+  return m;
 }
 
 function rock(r: () => number, size: number, color: string, tex: ReefTextures) {

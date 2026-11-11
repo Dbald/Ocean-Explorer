@@ -7,8 +7,9 @@ Teacher-led, browser-based reef expeditions for a classroom display, set in a Be
 | **1. The Living Reef** | What makes this reef a home? | Grades 3–6 lesson, Explore, and the *Can you find…?* game for TK–2 |
 | **2. The Changing Reef** | What’s changing on Belize’s reef? | Grades 3–6, and Little Explorers (TK–2) |
 | **3. Plankton to Whale Sharks** | How does the smallest life feed the biggest fish? | Grades 3–6, and Little Explorers (TK–2) |
+| **4. Into the Deep** | What changes as we dive deeper, and how do animals live in the dark? | Grades 3–6, and Little Explorers (TK–2) |
 
-In Expedition 1 a class inspects five organisms, connects food relationships, predicts the effect of losing shelter, and explains a conservation choice. Expedition 2 is about sargassum, trash and warming water, and Expedition 3 swims off the reef into the open ocean (see below).
+In Expedition 1 a class inspects five organisms, connects food relationships, predicts the effect of losing shelter, and explains a conservation choice. Expedition 2 is about sargassum, trash and warming water, Expedition 3 swims off the reef into the open ocean, and Expedition 4 dives straight down through the ocean zones (see below).
 
 **Lesson framework:** explore → predict → manipulate → observe → explain.
 
@@ -157,6 +158,23 @@ The first Phase 2 expedition leaves the reef for **The Open Ocean**: a new open-
 
 Content lives in `src/content/openOcean.ts`, with every claim sourced and marked draft until reviewed. The 3D open water is in `src/scene/openOcean3d.ts`, the illustrations in `src/scene/StaticScene.ts`, and the side panel and magnifier in `src/ui/oceanViews.ts`.
 
+## Expedition 4: Into the Deep
+
+The second Phase 2 expedition dives straight down from Expedition 3’s open water, through the **sunlight zone** (0–200 m), the **twilight zone** (200–1,000 m) and the **midnight zone** (1,000–4,000 m). As the camera goes down, the water, the light and the background darken with depth, and the prompt over the scene doubles as a depth readout. It works in 3D or with the illustrations. The scene is not to scale.
+
+**Grades 3–6** (about 10 minutes, six steps):
+
+1. **Briefing.** What changes as we dive deeper, and how do animals live in the dark?
+2. **Dive down.** A depth gauge and fact cards show light, cold and pressure in each zone. The class meets the animals: phytoplankton and a whale shark (which can dive almost 2,000 m) in the sunlight zone; lanternfish and hatchetfish in the twilight zone; an anglerfish, a gulper eel, an Atolla jelly and marine snow in the midnight zone.
+3. **Zone clues.** Five clue cards, each placed in the right zone; a wrong zone gets a hint. The twist: the nightly migration of lanternfish and others, the biggest migration on Earth.
+4. **Lights out.** The class predicts why deep-sea animals make light, then switches off the submarine’s lights (labelled **Simplified example**): only the animals’ own light is left — the anglerfish’s lure, the Atolla’s spinning blue alarm, the gulper eel’s pink tail tip.
+5. **Explain.** Two checked questions, plus a discussion question (how one deep-sea animal survives) with a rubric.
+6. **Recap.** Key ideas, the pressure fact, marine snow, and a completed / attempted / skipped summary.
+
+**Little Explorers (TK–2)** (four steps): a short story; **dive down**, tapping “Dive deeper!” zone by zone and meeting one animal in each; **lights out**, finding the three glowing animals in the dark; and a celebration that ends with “look, don’t touch”.
+
+Content lives in `src/content/deepOcean.ts`, with every claim sourced and marked draft until reviewed. The 3D deep column is in `src/scene/deepSea3d.ts` (ReefScene darkens the water with depth and runs the submarine’s lamp), the illustrations in `src/scene/StaticScene.ts`, and the side panel in `src/ui/deepViews.ts`.
+
 ## Look and labels
 
 The interface follows The Codex's website: white panels, near-black text, teal for the reef trip, pill buttons, cards with a thin black outline, and extra-wide capital headings in Archivo (bundled from `@fontsource-variable/archivo`, SIL Open Font License, so nothing loads from the internet). It has a course header with progress, a *Live · Ocean Explorer* chip and a short prompt over the reef, and a side panel with a step tracker, a step card and a wide **Next** button. Creatures show a dot and their name only when the pointer is over them (or when selected), so the reef stays uncluttered on a classroom board. **Settings → Always show name labels** brings every name back.
@@ -167,7 +185,7 @@ The scene is illustrated, so animal cards, the *Can you find…?* "You found it!
 
 ## Your own voice
 
-The narration can use recordings of your own voice in place of the browser voice. The 14 Expedition 1 lines are recorded; the game, animal-fact, Expedition 2 and Expedition 3 lines still use the browser voice until they are recorded. Open `/#record` (or **Teacher guide → Record narration**) to record them line by line in the browser. See [docs/narration.md](docs/narration.md) for the full script and how recordings are added.
+The narration can use recordings of your own voice in place of the browser voice. The 14 Expedition 1 lines are recorded; the game, animal-fact, Expedition 2, Expedition 3 and Expedition 4 lines still use the browser voice until they are recorded. Open `/#record` (or **Teacher guide → Record narration**) to record them line by line in the browser. See [docs/narration.md](docs/narration.md) for the full script and how recordings are added.
 
 ## Optional video segments
 

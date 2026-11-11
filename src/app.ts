@@ -14,6 +14,8 @@ import { organismById, organisms } from './content/organisms.ts';
 import { LIVE_PHASE, OCEAN_PHASE, upcomingPhases } from './content/phases.ts';
 import { OCEAN_QUESTION, OCEAN_TITLE, chainLinks, feedItems, isOceanAnimal, oceanAnimalsAt, oceanStepsFor, raftFinds, type OceanLevel, type OceanStop } from './content/openOcean.ts';
 import { oceanStep, oceanStopFor, renderMagnifier, renderOceanDock } from './ui/oceanViews.ts';
+import { DEEP_QUESTION, DEEP_TITLE, deepAnimalsAt, deepStepsFor, glowFinds, isDeepAnimal, zoneById, zoneClues, type DeepLevel, type DeepZone } from './content/deepOcean.ts';
+import { deepStep, renderDeepDock } from './ui/deepViews.ts';
 import type { HabitatId, StepId, VideoSegment } from './content/types.ts';
 import { currentFindTarget, initialState, reduce, type Action, type LessonState, type Mode } from './lesson/controller.ts';
 import { clearAll, loadPreferences, loadSession, savePreferences, saveSession, type Preferences } from './lesson/store.ts';
@@ -31,7 +33,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getEleme
 
 interface SceneTarget {
   view: Viewpoint;
-  stop: HabitatId | OceanStop;
+  stop: HabitatId | OceanStop | DeepZone;
   shelter: 'before' | 'after' | null;
 }
 
@@ -201,10 +203,12 @@ export class App {
 
     if (s.mode === 'changing') this.narrateChanging(prev, action);
     if (s.mode === 'ocean') this.narrateOcean(prev, action);
+    if (s.mode === 'deep') this.narrateDeep(prev, action);
 
     const chStepChanged = s.mode === 'changing' && (prev.mode !== 'changing' || prev.changing.step !== s.changing.step);
     const ocStepChanged = s.mode === 'ocean' && (prev.mode !== 'ocean' || prev.ocean.step !== s.ocean.step);
-    if ((stepChanged || chStepChanged || ocStepChanged) && s.mode !== null) this.focusKey('instruction');
+    const dzStepChanged = s.mode === 'deep' && (prev.mode !== 'deep' || prev.deep.step !== s.deep.step);
+    if ((stepChanged || chStepChanged || ocStepChanged || dzStepChanged) && s.mode !== null) this.focusKey('instruction');
     // Little Explorers start the "tiny things" step looking through the magnifier.
     if (ocStepChanged && oceanStep(s).kind === 'tiny' && !s.ocean.magnifier) this.dispatch({ type: 'ocMagnifier', open: true });
     if (action.type === 'selectOrganism' && action.id) this.focusKey('card-title');
@@ -240,6 +244,21 @@ export class App {
     if (action.type === 'ocFeed') this.narrate(`ocl-feed-${action.id}`, true);
   }
 
+  /** Expedition 4 narration: each step, each new zone, the clue twist, the glow finding. */
+  private narrateDeep(prev: LessonState, action: Action) {
+    const s = this.state;
+    const d = s.deep;
+    const stepChanged = prev.mode !== 'deep' || prev.deep.step !== d.step || action.type === 'startDeep';
+    if (stepChanged) {
+      const step = deepStep(s);
+      return this.narrateSequence(step.kind === 'recap' && d.level === 'older' ? [step.narrationId, 'dz-marine-snow'] : [step.narrationId]);
+    }
+    if ((action.type === 'dzZone' || action.type === 'dzDeeper') && prev.deep.zone !== d.zone) this.narrate(`dz-zone-${d.zone}`, true);
+    const placed = Object.keys(d.sorted).length;
+    if (action.type === 'dzSort' && placed === zoneClues.length && Object.keys(prev.deep.sorted).length < zoneClues.length) this.narrate('dz-sort-done');
+    if (action.type === 'dzLights' && d.sawDark && !prev.deep.sawDark && d.level === 'older') this.narrate('dz-glow-reveal');
+  }
+
   private narrate(id: string, force = false) {
     this.narrateSequence([id], force);
   }
@@ -266,6 +285,7 @@ export class App {
   private onTap(id: string) {
     if (isLitterId(id)) return this.cleanLitter(id);
     if (this.state.mode === 'ocean') return this.oceanTap(id);
+    if (this.state.mode === 'deep') return this.deepTap(id);
     this.scene3d?.react(id);
     // On the home screen, tapping an animal dives straight into Explore with its card open.
     if (this.state.mode === null) {
@@ -305,6 +325,35 @@ export class App {
     }
     this.dispatch({ type: 'ocMeet', id });
     this.narrate(`oc-animal-${id}`, true);
+  }
+
+  /**
+   * A tap on a deep-sea animal: it says hello; with the lights off in the
+   * Little Explorers' hunt it is also a find. The sunlight zone's whale shark
+   * is Expedition 3's, so its tap is translated.
+   */
+  private deepTap(sceneId: string) {
+    const id = sceneId === 'whale-shark' ? 'diving-whale-shark' : sceneId;
+    if (!isDeepAnimal(id)) return;
+    this.scene3d?.react(id === 'diving-whale-shark' ? 'whale-shark' : id);
+    const s = this.state;
+    if (s.deep.level === 'little' && deepStep(s).kind === 'glow' && !s.deep.lights && glowFinds.includes(id)) {
+      this.dispatch({ type: 'dzFind', id });
+      return this.narrate(`dz-animal-${id}`, true);
+    }
+    this.dispatch({ type: 'dzMeet', id });
+    this.narrate(`dz-animal-${id}`, true);
+  }
+
+  private startDeep(level: DeepLevel) {
+    this.paused = false;
+    this.resumable = null;
+    this.startAudio();
+    this.dispatch({ type: 'startDeep', level });
+  }
+
+  private deepNav(delta: number) {
+    this.dispatch({ type: 'dzGoto', step: this.state.deep.step + delta });
   }
 
   private startOcean(level: OceanLevel) {
@@ -462,6 +511,7 @@ export class App {
       const stop = oceanStopFor(s);
       return { view: stop, stop, shelter: null };
     }
+    if (s.mode === 'deep') return { view: s.deep.zone, stop: s.deep.zone, shelter: null };
     if (s.mode === 'changing') {
       const kind = changingStep(s).kind;
       return at(kind === 'reef' || kind === 'cleanup' || kind === 'seaweed' ? s.stop : 'reef');
@@ -512,14 +562,21 @@ export class App {
     const ocean = s.mode === 'ocean';
     const okind = ocean ? oceanStep(s).kind : null;
     const spawning = okind === 'spawn' && s.ocean.spawning;
-    this.scene3d?.setOpenOcean(ocean);
+    // Expedition 4 dives from Expedition 3's open water, so that water stays on above it.
+    const deep = s.mode === 'deep';
+    this.scene3d?.setOpenOcean(ocean || deep);
     if (ocean) this.scene3d?.setOceanStop(t.stop as OceanStop, okind === 'feed');
+    if (deep) this.scene3d?.setOceanStop('blue');
     this.scene3d?.setSpawning(spawning);
-    // In the raft hunt the names would give the answers away, as in "Can you find…?".
-    const raftHunt = okind === 'raft';
+    this.scene3d?.setDeep(deep);
+    this.scene3d?.setDeepLights(!deep || s.deep.lights);
+    // In the raft hunt (and the glow hunt) the names would give the answers away, as in "Can you find…?".
+    const raftHunt = okind === 'raft' || (deep && s.deep.level === 'little' && deepStep(s).kind === 'glow');
     const here = ocean
       ? oceanAnimalsAt(t.stop as OceanStop).map((a) => ({ id: a.id, title: a.title, done: s.ocean.met.includes(a.id) }))
-      : findablesAt(t.stop as HabitatId).map((f) => ({ id: f.id, title: f.title, done: this.state.discovered.includes(f.id) }));
+      : deep
+        ? deepAnimalsAt(s.deep.zone).map((a) => ({ id: a.id === 'diving-whale-shark' ? 'whale-shark' : a.id, title: a.title, done: s.deep.met.includes(a.id) }))
+        : findablesAt(t.stop as HabitatId).map((f) => ({ id: f.id, title: f.title, done: this.state.discovered.includes(f.id) }));
     // Name tags float over the creatures at the current stop, like the illustrations' labels.
     // Shown on hover (or for the selected animal) unless "Always show name labels" is on.
     this.scene3d?.setLabels(this.labelsVisible() && !raftHunt && !t.shelter && !litter ? here : null, this.prefs.labelsAlways);
@@ -529,11 +586,12 @@ export class App {
       shelterView: t.shelter,
       labels: this.labelsVisible() && !raftHunt,
       labelsAlways: this.prefs.labelsAlways,
-      discovered: ocean ? s.ocean.met : this.state.discovered,
+      discovered: ocean ? s.ocean.met : deep ? s.deep.met : this.state.discovered,
       hint: this.staticHint,
       sargassum,
       litter,
       spawning,
+      lights: deep ? s.deep.lights : true,
     });
     this.renderMagnifierLayer();
     const map = mapStateFor(s);
@@ -582,7 +640,7 @@ export class App {
     const s = this.state;
     const parts: string[] = [];
     const sub = document.querySelector('.brand-sub');
-    if (sub) sub.textContent = s.mode === null ? PRODUCT_NAME : s.mode === 'changing' ? `Belize: ${CHANGING_TITLE}` : s.mode === 'ocean' ? `The Open Ocean: ${OCEAN_TITLE}` : LESSON_TITLE;
+    if (sub) sub.textContent = s.mode === null ? PRODUCT_NAME : s.mode === 'changing' ? `Belize: ${CHANGING_TITLE}` : s.mode === 'ocean' ? `The Open Ocean: ${OCEAN_TITLE}` : s.mode === 'deep' ? `The Open Ocean: ${DEEP_TITLE}` : LESSON_TITLE;
     // Progress through a guided lesson: a bar and "1 of 6". The full step name is there for screen readers.
     const progress = (i: number, n: number, label: string) =>
       `<div class="progress"><span class="progress-track" aria-hidden="true"><span style="width:${Math.round(((i + 1) / n) * 100)}%"></span></span><span class="progress-count" aria-hidden="true">${i + 1} of ${n}</span><span class="step-indicator sr-only">${esc(label)}</span></div>`;
@@ -597,6 +655,10 @@ export class App {
       const list = oceanStepsFor(s.ocean.level);
       const i = Math.min(s.ocean.step, list.length - 1);
       parts.push(progress(i, list.length, `${s.ocean.level === 'little' ? 'Little Explorers' : 'Expedition 3'} · Step ${i + 1} of ${list.length}: ${list[i].label}`));
+    } else if (s.mode === 'deep') {
+      const list = deepStepsFor(s.deep.level);
+      const i = Math.min(s.deep.step, list.length - 1);
+      parts.push(progress(i, list.length, `${s.deep.level === 'little' ? 'Little Explorers' : 'Expedition 4'} · Step ${i + 1} of ${list.length}: ${list[i].label}`));
     } else if (s.mode === 'changing') {
       const list = stepsFor(s.changing.level);
       const i = Math.min(s.changing.step, list.length - 1);
@@ -630,6 +692,14 @@ export class App {
         raft: 'Who is hiding in the seaweed?',
       };
       return byKind[oceanStep(s).kind] ?? '';
+    }
+    if (s.mode === 'deep') {
+      const kind = deepStep(s).kind;
+      const z = zoneById.get(s.deep.zone)!;
+      // While diving, the prompt doubles as a depth readout.
+      if (kind === 'descend' || kind === 'glow') return `${z.title} · ${z.depth}`;
+      const byKind: Record<string, string> = { briefing: 'Into the deep', sort: 'Which zone is it?', explain: 'Show what you know', recap: 'What did we find?' };
+      return byKind[kind] ?? '';
     }
     if (s.mode === 'changing') {
       const kind = changingStep(s).kind;
@@ -698,7 +768,9 @@ export class App {
             ? `Resume ${CHANGING_TITLE} (step ${r.changing.step + 1}: ${stepsFor(r.changing.level)[r.changing.step]?.label ?? ''})`
             : r.mode === 'ocean'
               ? `Resume ${OCEAN_TITLE} (step ${r.ocean.step + 1}: ${oceanStepsFor(r.ocean.level)[r.ocean.step]?.label ?? ''})`
-              : 'Resume exploring';
+              : r.mode === 'deep'
+                ? `Resume ${DEEP_TITLE} (step ${r.deep.step + 1}: ${deepStepsFor(r.deep.level)[r.deep.step]?.label ?? ''})`
+                : 'Resume exploring';
     const draft = organisms.some((o) => o.review.status !== 'reviewed');
     entry.dataset.open = String(this.homeOpen);
 
@@ -790,6 +862,17 @@ export class App {
                 ${btn('Little Explorers (TK–2)', 'start-ocean', { arg: 'little', cls: 'secondary big', key: 'entry-oc-little', icon: '▶', aria: `${OCEAN_TITLE}: Little Explorers (TK–2)` })}
               </div>
             </article>
+
+            <article class="expedition" aria-labelledby="exp4-title">
+              <p class="eyebrow">Expedition 4 <span class="live-badge">New</span></p>
+              <h3 id="exp4-title">${esc(DEEP_TITLE)}</h3>
+              <p class="question">${esc(DEEP_QUESTION)}</p>
+              <p class="small">The sunlight, twilight and midnight zones, and the animals that make their own light.</p>
+              <div class="row entry-actions">
+                ${btn('Grades 3–6', 'start-deep', { arg: 'older', cls: 'secondary big', key: 'entry-dz-older', icon: '▶', aria: `${DEEP_TITLE}: Grades 3–6` })}
+                ${btn('Little Explorers (TK–2)', 'start-deep', { arg: 'little', cls: 'secondary big', key: 'entry-dz-little', icon: '▶', aria: `${DEEP_TITLE}: Little Explorers (TK–2)` })}
+              </div>
+            </article>
           </section>
 
           ${soon}
@@ -834,7 +917,7 @@ export class App {
     if (dock.hidden) return this.updateInsets();
     const ctx = { videos: this.videos };
     dock.dataset.mode = this.state.mode ?? '';
-    dock.dataset.step = this.state.mode === 'changing' ? changingStep(this.state).kind : this.state.mode === 'ocean' ? oceanStep(this.state).kind : this.state.step;
+    dock.dataset.step = this.state.mode === 'changing' ? changingStep(this.state).kind : this.state.mode === 'ocean' ? oceanStep(this.state).kind : this.state.mode === 'deep' ? deepStep(this.state).kind : this.state.step;
     const mode = this.state.mode;
     this.patch(
       dock,
@@ -846,7 +929,9 @@ export class App {
             ? renderChangingDock(this.state, this.paused)
             : mode === 'ocean'
               ? renderOceanDock(this.state, this.paused)
-            : renderExploreDock(this.state),
+              : mode === 'deep'
+                ? renderDeepDock(this.state, this.paused)
+                : renderExploreDock(this.state),
     );
     this.updateInsets();
   }
@@ -1093,17 +1178,19 @@ export class App {
     const modalOpen = document.querySelector('dialog[open]') || !$('guide').hidden || !$('recorder').hidden;
     if (typing || modalOpen || e.ctrlKey || e.metaKey || e.altKey) return;
     const mode = this.state.mode;
-    if (mode !== 'lesson' && mode !== 'changing' && mode !== 'ocean') return;
+    if (mode !== 'lesson' && mode !== 'changing' && mode !== 'ocean' && mode !== 'deep') return;
     const key = e.key.toLowerCase();
     if (key === 'n' || e.key === 'PageDown') {
       e.preventDefault();
       if (mode === 'changing') this.changingNav(1);
       else if (mode === 'ocean') this.oceanNav(1);
+      else if (mode === 'deep') this.deepNav(1);
       else this.dispatch({ type: 'next' });
     } else if (key === 'b' || e.key === 'PageUp') {
       e.preventDefault();
       if (mode === 'changing') this.changingNav(-1);
       else if (mode === 'ocean') this.oceanNav(-1);
+      else if (mode === 'deep') this.deepNav(-1);
       else this.dispatch({ type: 'back' });
     } else if (key === 'p') {
       this.togglePause();
@@ -1118,7 +1205,9 @@ export class App {
         ? changingStep(this.state).narrationId
         : this.state.mode === 'ocean'
           ? oceanStep(this.state).narrationId
-          : stepById.get(this.state.step)!.narrationId;
+          : this.state.mode === 'deep'
+            ? deepStep(this.state).narrationId
+            : stepById.get(this.state.step)!.narrationId;
     this.narrate(id, true);
   }
 
@@ -1237,8 +1326,47 @@ export class App {
           this.paused = false;
           if (this.state.mode === 'changing') this.dispatch({ type: 'startChanging', level: this.state.changing.level });
           else if (this.state.mode === 'ocean') this.dispatch({ type: 'startOcean', level: this.state.ocean.level });
+          else if (this.state.mode === 'deep') this.dispatch({ type: 'startDeep', level: this.state.deep.level });
           else this.dispatch({ type: 'restart' });
         });
+      case 'start-deep':
+        return this.startDeep(a as DeepLevel);
+      case 'dz-goto':
+        return this.dispatch({ type: 'dzGoto', step: Number(a) });
+      case 'dz-next':
+        return this.deepNav(1);
+      case 'dz-back':
+        return this.deepNav(-1);
+      case 'dz-zone':
+        return this.dispatch({ type: 'dzZone', zone: a as DeepZone });
+      case 'dz-deeper':
+        this.dispatch({ type: 'dzDeeper' });
+        return this.focusKey(this.state.deep.zone === 'midnight' ? 'instruction' : 'dz-deeper');
+      case 'dz-meet':
+      case 'dz-find':
+        // From the list in the panel: the same as tapping the animal in the scene.
+        return this.deepTap(a);
+      case 'dz-sort': {
+        const [clue, zone] = a.split(':');
+        return this.dispatch({ type: 'dzSort', clue, zone: zone as DeepZone });
+      }
+      case 'dz-predict':
+        return this.dispatch({ type: 'dzPredict', option: a });
+      case 'dz-reveal':
+        this.dispatch({ type: 'dzReveal' });
+        return this.focusKey('dz-lights:off');
+      case 'dz-lights':
+        this.dispatch({ type: 'dzLights', on: a === 'on' });
+        return this.focusKey(this.state.deep.level === 'little' ? 'dz-lights' : `dz-lights:${a}`);
+      case 'dz-exit':
+        this.dispatch({ type: 'dzExitIndex', index: Number(a) });
+        return this.focusKey('instruction');
+      case 'dz-action':
+        return this.dispatch({ type: 'dzAction', id: a });
+      case 'dz-score':
+        return this.dispatch({ type: 'dzScore', score: this.state.deep.actionScore === Number(a) ? null : Number(a) });
+      case 'dz-discussed':
+        return this.dispatch({ type: 'dzDiscussed' });
       case 'start-ocean':
         return this.startOcean(a as OceanLevel);
       case 'oc-goto':

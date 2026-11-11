@@ -5,6 +5,7 @@
  */
 import { beltSnapshots, helpers, littleSteps, olderSteps } from '../content/changing.ts';
 import { feedItems, littleOceanSteps, oceanAnimals, olderOceanSteps, plankton } from '../content/openOcean.ts';
+import { deepAnimals, littleDeepSteps, olderDeepSteps, zones } from '../content/deepOcean.ts';
 import { findables, findNarrationId, spotterNarrationId } from '../content/findables.ts';
 import { habitats } from '../content/habitats.ts';
 import { steps } from '../content/lesson.ts';
@@ -76,6 +77,24 @@ const groups: { title: string; ids: { id: string; label: string }[] }[] = [
   {
     title: 'Expedition 3: open-ocean animals and plankton (heard when tapped)',
     ids: [...oceanAnimals.map((a) => ({ id: `oc-animal-${a.id}`, label: a.title })), ...plankton.map((p) => ({ id: `oc-plankton-${p.id}`, label: p.title }))],
+  },
+  {
+    title: 'Expedition 4: Into the Deep (Grades 3–6)',
+    ids: [
+      ...olderDeepSteps.map((st, i) => ({ id: st.narrationId, label: `Step ${i + 1}: ${st.label}` })),
+      ...zones.map((z) => ({ id: `dz-zone-${z.id}`, label: `Arriving: ${z.title}` })),
+      { id: 'dz-sort-done', label: 'The migration twist' },
+      { id: 'dz-glow-reveal', label: 'What scientists found about animal light' },
+      { id: 'dz-marine-snow', label: 'Did you know? (marine snow)' },
+    ],
+  },
+  {
+    title: 'Expedition 4: Little Explorers (TK–2)',
+    ids: littleDeepSteps.map((st, i) => ({ id: st.narrationId, label: `Step ${i + 1}: ${st.label}` })),
+  },
+  {
+    title: 'Expedition 4: deep-sea animals (heard when tapped)',
+    ids: deepAnimals.map((a) => ({ id: `dz-animal-${a.id}`, label: a.title })),
   },
 ];
 

@@ -153,7 +153,7 @@ test('the teacher guide is complete and opens from a link', async ({ page }) => 
   await page.goto('/?presentation=static#guide');
   const guide = page.locator('#guide');
   await expect(guide).toBeVisible();
-  for (const heading of ['Before class', 'Lesson sequence', 'Can you find…? (great for TK–2)', 'The Changing Reef', 'Plankton to Whale Sharks', 'Animals in the open water', 'Vocabulary', 'Answers', 'Organisms and relationships', 'Accessibility and classroom controls', 'Transcript', 'Sources and credits']) {
+  for (const heading of ['Before class', 'Lesson sequence', 'Can you find…? (great for TK–2)', 'The Changing Reef', 'Plankton to Whale Sharks', 'Animals in the open water', 'Into the Deep', 'Animals of the deep', 'Vocabulary', 'Answers', 'Organisms and relationships', 'Accessibility and classroom controls', 'Transcript', 'Sources and credits']) {
     await expect(guide.getByRole('heading', { name: heading, exact: true })).toBeVisible();
   }
   await expect(guide).toContainText('Links an action, a habitat feature and an organism’s need');
@@ -481,4 +481,86 @@ test('in 3D, Expedition 3 swims out to open water and on to Gladden Spit', async
   await press(page, 'Record class prediction');
   await press(page, 'Snappers spawning');
   await expect(page.locator('#caption')).toContainText('Gladden Spit');
+});
+
+test('Expedition 4 (Grades 3–6): three zones, zone clues, a prediction before lights out, recap', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Into the Deep: Grades 3–6');
+  await expect(page.locator('.step-indicator')).toHaveText('Expedition 4 · Step 1 of 6: Briefing');
+  await expect(page.locator('.instruction')).toHaveText('What changes as we dive deeper, and how do animals live in the dark?');
+  await page.keyboard.press('n');
+  // Dive down: the gauge follows the zone, and animals can be met from the list too.
+  await expect(dock(page).locator('.zone-band.is-here')).toContainText('Sunlight zone');
+  await dock(page).getByRole('button', { name: 'Whale shark', exact: true }).click();
+  await press(page, '2. Twilight zone');
+  await expect(dock(page).locator('.zone-band.is-here')).toContainText('Twilight zone');
+  await expect(page.locator('.prompt-chip')).toContainText('200–1,000 m');
+  await dock(page).getByRole('button', { name: 'Lanternfish', exact: true }).click();
+  await press(page, '3. Midnight zone');
+  await dock(page).getByRole('button', { name: 'Anglerfish', exact: true }).click();
+  await expect(dock(page)).toContainText('Visited 3 of 3 zones · met 3 animals');
+  await page.keyboard.press('n');
+  // Zone clues: a wrong zone gets a hint; every clue placed shows the migration twist.
+  await page.locator('[data-key="dz-sort:cold:sunlight"]').click();
+  await expect(dock(page).locator('.feedback.retry')).toContainText('colder the deeper');
+  for (const [clue, zone] of [['food', 'sunlight'], ['dim', 'twilight'], ['dark', 'midnight'], ['cold', 'midnight'], ['hide', 'twilight']]) {
+    await page.locator(`[data-key="dz-sort:${clue}:${zone}"]`).click();
+  }
+  await expect(dock(page)).toContainText('biggest migration on Earth');
+  await page.keyboard.press('n');
+  // Lights out: the switch opens only after a prediction.
+  await expect(dock(page).getByRole('button', { name: 'Our lights off' })).toHaveCount(0);
+  await expect(dock(page).getByRole('button', { name: 'Record class prediction' })).toBeDisabled();
+  await press(page, 'To hide from hunters');
+  await press(page, 'Record class prediction');
+  await press(page, 'Our lights off');
+  await expect(dock(page)).toContainText('glowing lure attracts food');
+  await page.keyboard.press('n');
+  await press(page, 'There is no sunlight for them to make food');
+  await press(page, 'Submit answer');
+  await expect(dock(page).locator('.feedback.good')).toBeVisible();
+  await page.keyboard.press('n');
+  await expect(dock(page)).toContainText('marine snow');
+  await expect(dock(page).locator('.recap-completed')).toContainText('Zone clues');
+  await expect(dock(page).locator('.recap-completed')).toContainText('Lights out');
+  await expect(dock(page).locator('.recap-skipped')).toContainText('question 2');
+});
+
+test('Expedition 4 (Little Explorers): dive deeper zone by zone, then find the glowing animals', async ({ page }) => {
+  await page.goto('/?presentation=static');
+  await press(page, 'Into the Deep: Little Explorers (TK–2)');
+  await expect(page.locator('.step-indicator')).toHaveText('Little Explorers · Step 1 of 4: Story');
+  await page.keyboard.press('n');
+  await press(page, 'Meet the whale shark');
+  await press(page, 'Dive deeper!');
+  await press(page, 'Meet the lanternfish');
+  await press(page, 'Dive deeper!');
+  await expect(dock(page)).toContainText('We reached the midnight zone');
+  await press(page, 'Meet the anglerfish');
+  await page.keyboard.press('n');
+  // With the lights on nothing counts yet; with them off, the picture is the puzzle.
+  await page.locator('[data-organism="anglerfish"]').click();
+  await expect(dock(page)).toContainText('Turn off our lights to see who glows');
+  await press(page, 'Turn off our lights');
+  await expect(page.locator('.hotspot.is-blank')).toHaveCount(4);
+  await page.locator('[data-organism="marine-snow"]').click();
+  for (const id of ['anglerfish', 'atolla-jelly', 'gulper-eel']) await page.locator(`[data-organism="${id}"]`).click();
+  await expect(dock(page)).toContainText('You found all the glowing animals');
+  await page.keyboard.press('n');
+  await expect(dock(page)).toContainText('visited 3 zones and found 3 glowing animals');
+  await page.reload();
+  await expect(page.getByRole('button', { name: /^Resume Into the Deep \(step 4/ })).toBeVisible();
+});
+
+test('in 3D, Expedition 4 dives from the sunlight zone to the midnight zone', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#loading')).toBeHidden({ timeout: 30_000 });
+  await press(page, 'Into the Deep: Grades 3–6');
+  await expect(page.locator('#stage canvas')).toHaveAttribute('data-view', 'sunlight');
+  await dock(page).locator('.stepper').getByRole('button', { name: /4\. Lights out/ }).click();
+  await expect(page.locator('#stage canvas')).toHaveAttribute('data-view', 'midnight');
+  await press(page, 'To find or attract food');
+  await press(page, 'Record class prediction');
+  await press(page, 'Our lights off');
+  await expect(page.locator('#caption')).toContainText('anglerfish');
 });

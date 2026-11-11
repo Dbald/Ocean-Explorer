@@ -667,3 +667,29 @@ details[open] > summary::before { transform: rotate(90deg); }
   .guide tr, .guide li { break-inside: avoid; }
   .guide a::after { content: ' (' attr(href) ')'; font-size: 0.85em; color: #45636c; }
 }
+
+/* Expedition 4: the depth gauge, zone facts and zone clues. */
+.zone-panel { display: grid; gap: 0.5em; margin: 0.5em 0; }
+.zone-gauge { display: grid; border-radius: 12px; overflow: hidden; border: 1.5px solid var(--line-strong); margin: 0.4em 0; }
+.zone-band { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.5em; padding: 0.45em 0.65em; color: #fff; font-size: 0.85em; min-height: 2.6em; }
+.zone-band.zone-sunlight { background: linear-gradient(#5cc3d6, #2a8aaa); color: #082733; }
+.zone-band.zone-twilight { background: linear-gradient(#1f5f8c, #0d2f52); }
+.zone-band.zone-midnight { background: linear-gradient(#08142a, #000); min-height: 3.6em; }
+.zone-band.is-here { box-shadow: inset 0 0 0 4px var(--highlight); }
+.zone-name { font-weight: 800; }
+.zone-depth { opacity: 0.85; }
+.zone-here { flex-basis: 100%; font-weight: 800; color: var(--highlight); }
+.zone-band.zone-sunlight .zone-here { color: #fff4c2; text-shadow: 0 1px 2px #0006; }
+.zone-facts { display: grid; gap: 0.35em; margin: 0.4em 0 0; }
+.zone-facts div { display: grid; grid-template-columns: 6.2em 1fr; gap: 0.4em; background: var(--panel-2); border-radius: 10px; padding: 0.35em 0.6em; }
+.zone-facts dt { font-weight: 800; }
+.zone-facts dd { margin: 0; }
+.clue-list { list-style: none; padding: 0; margin: 0.4em 0; display: grid; gap: 0.5em; }
+.clue { border: 1.5px solid var(--line); border-radius: 14px; padding: 0.5em 0.7em; }
+.clue p { margin: 0 0 0.4em; font-weight: 600; }
+.clue.is-placed { border-color: var(--good); background: var(--good-bg); }
+.clue-zones { display: flex; flex-wrap: wrap; gap: 0.4em; }
+.clue-btn { flex: 1 1 6em; }
+.clue-btn.is-wrong { border-color: var(--retry); background: var(--retry-bg); }
+.clue-answer { font-weight: 800; color: var(--good); }
+.expedition .eyebrow .live-badge { margin-left: 0.4em; vertical-align: middle; }

@@ -199,6 +199,50 @@ These go with Plankton to Whale Sharks. Until they are recorded, the browser voi
 | Copepod | `oc-plankton-copepod.mp3` | A copepod: a tiny animal. Zooplankton like this eat phytoplankton, and bigger animals eat them. |
 
 
+## Expedition 4 lines to record (24 lines, about 3 minutes)
+
+These go with Into the Deep. Until they are recorded, the browser voice reads them.
+
+### Grades 3–6
+
+| Line | File | Words to read |
+|---|---|---|
+| Step 1: Briefing | `dz-step-briefing.mp3` | What changes as we dive deeper, and how do animals live in the dark? Today we dive straight down from the open ocean, through three zones, into the dark. |
+| Step 2: Dive down | `dz-step-descend.mp3` | Let’s dive! Watch the gauge as we go down through the sunlight, twilight and midnight zones, and tap the animals we meet. |
+| Step 3: Zone clues | `dz-step-sort.mp3` | Which zone is each clue about? Talk it over, then tap a zone. |
+| Step 4: Lights out | `dz-step-glow.mp3` | Down here, many animals make their own light. Why do you think they do it? Make a prediction, then switch off our lights. |
+| Step 5: Explain | `dz-step-explain.mp3` | Now it’s your turn to explain. Answer three questions about what you learned. |
+| Step 6: Recap | `dz-step-recap.mp3` | As we dive deeper, the light fades, the water gets colder and the pressure grows. In the dark, many animals make their own light, to find food and to hide. |
+| Arriving: Sunlight zone | `dz-zone-sunlight.mp3` | The sunlight zone: bright water near the surface. This is where phytoplankton use sunlight to make food. |
+| Arriving: Twilight zone | `dz-zone-twilight.mp3` | The twilight zone: only a dim blue glow from above. Many animals here make their own light. |
+| Arriving: Midnight zone | `dz-zone-midnight.mp3` | The midnight zone: completely dark and very cold. The only light down here comes from animals. |
+| The migration twist | `dz-sort-done.mp3` | Every night, lanternfish and many other animals swim up toward the sunlight zone to feed, then sink back down by morning. Scientists call it the biggest migration on Earth. |
+| What scientists found about animal light | `dz-glow-reveal.mp3` | Scientists found animals use their light in many ways. The anglerfish’s glowing lure attracts food. Lanternfish and hatchetfish glow on their bellies to hide their shadows from hunters below. And light can help animals signal to each other. |
+| Did you know? (marine snow) | `dz-marine-snow.mp3` | Even in the dark, food comes from above. Bits of dead plankton and other food sink down like snow. Scientists call it marine snow. |
+
+### Little Explorers (TK–2)
+
+| Line | File | Words to read |
+|---|---|---|
+| Step 1: Story | `dzl-story.mp3` | Let’s dive down, down, down into the deep sea! It gets darker and colder the deeper we go. |
+| Step 2: Dive down | `dzl-descend.mp3` | Tap “Dive deeper!” to go down. Then tap the animal you meet. |
+| Step 3: Lights out | `dzl-glow.mp3` | It’s dark down here! Let’s turn off our lights. Tap the animals that glow. |
+| Step 4: Well done | `dzl-done.mp3` | You dove all the way to the midnight zone! Remember, in the ocean we look at animals, but we never touch them. |
+
+### Deep-sea animals (heard when a child taps one)
+
+| Line | File | Words to read |
+|---|---|---|
+| Phytoplankton | `dz-animal-phytoplankton-cloud.mp3` | Phytoplankton! They live only in the sunlight zone, where there is light to make food. |
+| Whale shark | `dz-animal-diving-whale-shark.mp3` | A whale shark! It feeds near the surface, but scientists tracked one diving almost 2,000 meters deep. |
+| Lanternfish | `dz-animal-lanternfish.mp3` | Lanternfish! Tiny lights on their bellies help them hide. At night they swim up to feed. |
+| Hatchetfish | `dz-animal-hatchetfish.mp3` | A hatchetfish! Its belly glows like the light from above, so hunters below can’t see its shadow. |
+| Anglerfish | `dz-animal-anglerfish.mp3` | An anglerfish! It dangles a glowing lure to attract food in the dark. |
+| Gulper eel | `dz-animal-gulper-eel.mp3` | A gulper eel! Its huge mouth catches any food it finds, because food is hard to find down here. |
+| Atolla jelly | `dz-animal-atolla-jelly.mp3` | An Atolla jelly! If something grabs it, it flashes rings of blue light, like a burglar alarm. |
+| Marine snow | `dz-animal-marine-snow.mp3` | Marine snow! Bits of food drift down from the sunlight zone. Many deep-sea animals eat it. |
+
+
 ## Adding recordings to the lesson
 
 1. Convert each file to MP3 (mono, normalised loudness):

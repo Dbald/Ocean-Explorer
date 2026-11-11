@@ -62,6 +62,19 @@ Every record in `src/content/openOcean.ts` (the open-ocean animals, the three pl
 - [ ] Sargassum is described as a home in the open ocean, consistent with Expedition 2's "too much near shore" message.
 - [ ] Little Explorers: plankton and snapper eggs are food; the bottle and rock are clearly not.
 
+## Expedition 4: Into the Deep
+
+Every record in `src/content/deepOcean.ts` (the deep-sea animals, the zone facts, the migration twist, the uses of animal light, marine snow and the pressure fact) is a draft awaiting review.
+
+- [ ] Zone depths match NOAA: sunlight 0–200 m, twilight 200–1,000 m, midnight 1,000–4,000 m. Phytoplankton are described as needing the sunlight zone.
+- [ ] Pressure wording ("about 20 / 100 / 400 times the air pressure we feel" at the bottom of each zone) follows NOAA’s one-atmosphere-per-10-meters rule and is fair for children.
+- [ ] The midnight zone’s “about 4 °C, as cold as a fridge” matches NOAA JetStream.
+- [ ] The daily migration is called “the biggest migration on Earth”, as NOAA Ocean Exploration describes it.
+- [ ] Animal light: attracting food (anglerfish lure), hiding (counter-illumination in hatchetfish and lanternfish) and signaling are each supported. The lights switch is labelled **Simplified example**.
+- [ ] Each animal sits in a plausible zone. In particular, confirm the Atolla jelly as a midnight-zone animal (the NOAA source covers its “burglar alarm”; MBARI describes it as common in the midnight zone but could not be checked from here), and the gulper eel’s range across the twilight and midnight zones.
+- [ ] The whale shark’s deep dive (“almost 2,000 meters”) matches Tyminski et al. (2015), maximum 1,928 m.
+- [ ] The scene is described as not to scale, and the animals as shown bigger than life.
+
 ## Recording a review
 
 In the record's file under `src/content/`, change its `review` to:
@@ -112,3 +125,15 @@ The gate also rejects a `reviewed` record that has no reviewer or date.
 | `noaa-ocean-oxygen` | [NOAA National Ocean Service — How much oxygen comes from the ocean?](https://oceanservice.noaa.gov/facts/ocean-oxygen.html) | Scientists estimate roughly half of Earth's oxygen comes from the ocean, mostly from plankton. |
 | `noaa-mahi` | [NOAA Fisheries — Atlantic mahi-mahi](https://www.fisheries.noaa.gov/species/atlantic-mahi-mahi) | Top predators near the surface; often found near floating sargassum, and spawn under it. |
 | `noaa-oe-sargassum` | [NOAA Ocean Exploration — Sargassum](https://oceanexplorer.noaa.gov/explorations/03edge/background/sargassum/sargassum.html) | Floating sargassum gives food and shelter to young fish and young sea turtles. |
+| `noaa-light-travel` | [NOAA National Ocean Service — How far does light travel in the ocean?](https://oceanservice.noaa.gov/facts/light_travel.html) | Rarely any significant light below 200 m; the twilight zone (200–1,000 m) has too little light for photosynthesis. |
+| `noaa-ocean-layers` | [NOAA JetStream — Layers of the ocean](https://www.noaa.gov/jetstream/ocean/layers-of-ocean) | Twilight (mesopelagic) zone 200–1,000 m; midnight (bathypelagic) zone 1,000–4,000 m, constantly dark, about 4 °C. |
+| `noaa-pressure` | [NOAA National Ocean Service — Does the ocean have more pressure the deeper you go?](https://oceanservice.noaa.gov/facts/pressure.html) | Pressure rises by about one atmosphere for every 10 m (33 ft) of depth. |
+| `noaa-oe-migration` | [NOAA Ocean Exploration — Water column research](https://oceanexplorer.noaa.gov/explorations/17deepsearch/background/water-column-research/water-column-research.html) | Diel vertical migration: deep animals rise to feed at night and sink by day, the largest organized mass movement of animals on the planet. |
+| `whoi-lanternfish` | [Woods Hole Oceanographic Institution — Lanternfishes](https://www.whoi.edu/ocean-learning-hub/ocean-facts/lanternfishes/) | Lanternfishes are among the most numerous deep-sea fish, with light organs along the belly; they rise at night. |
+| `whoi-fish-flashlights` | [Woods Hole Oceanographic Institution — Fish with flashlights](https://www.whoi.edu/news-insights/content/fish-with-flashlights) | Hatchetfish and lanternfish match their belly light to the light from above (counter-illumination). |
+| `si-bioluminescence` | [Smithsonian Ocean — Bioluminescence](https://ocean.si.edu/ocean-life/fish/bioluminescence) | Deep-sea animals use light to find or attract food, hide from predators, and communicate. |
+| `si-anglerfish` | [Smithsonian Ocean — Meet the tiny bacteria that give anglerfishes their spooky glow](https://ocean.si.edu/ocean-life/fish/meet-tiny-bacteria-give-anglerfishes-their-spooky-glow) | Female deep-sea anglerfish have a lure (esca) lit by bacteria, used to attract prey. |
+| `whoi-pelican-eel` | [WHOI Ocean Twilight Zone — Pelican eel](https://twilightzone.whoi.edu/explore-the-otz/creature-features/pelican-eel) | The gulper (pelican) eel’s huge mouth works like a net where food is scarce; its tail tip glows. |
+| `noaa-marine-snow` | [NOAA National Ocean Service — What is marine snow?](https://oceanservice.noaa.gov/facts/marinesnow.html) | Organic material from the upper ocean falls to the deep and feeds deep-sea animals. |
+| `tyminski-2015-whale-shark-dives` | [PLOS ONE (PubMed Central) — Vertical movements and patterns in diving behavior of whale sharks (Tyminski et al., 2015)](https://pmc.ncbi.nlm.nih.gov/articles/PMC4651344/) | Tagged whale sharks occasionally dove deep; maximum recorded 1,928 m. |
+| `noaa-oe-atolla` | [NOAA Ocean Exploration — The “burglar alarm” of the Atolla jellyfish](https://oceanexplorer.noaa.gov/explorations/15biolum/background/medusa/media/burglar.html) | When attacked, Atolla flashes a pinwheel of blue light that may attract a bigger predator to its attacker. |
